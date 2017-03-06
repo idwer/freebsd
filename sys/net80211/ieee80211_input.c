@@ -97,6 +97,86 @@ ieee80211_input_mimo(struct ieee80211_node *ni, struct mbuf *m)
 	/* XXX should assert IEEE80211_R_NF and IEEE80211_R_RSSI are set */
 	ieee80211_process_mimo(ni, &rxs);
 
+	/* single matches */
+	if (rxs.c_pktflags & IEEE80211_RX_F_AMPDU) {
+		ni->ni_rx_histogram->rx_ampdu++;
+		ni->ni_rx_histogram->numpkts[rxs.c_rate][0]++;
+	}
+
+	if (rxs.c_pktflags & IEEE80211_RX_F_AMPDU_MORE) {
+		ni->ni_rx_histogram->rx_ampdu_more++;
+		ni->ni_rx_histogram->numpkts[rxs.c_rate][0]++;
+	}
+
+	if (rxs.c_pktflags & IEEE80211_RX_F_AMSDU) {
+		ni->ni_rx_histogram->rx_amsdu++;
+		ni->ni_rx_histogram->numpkts[rxs.c_rate][0]++;
+	}
+
+	if (rxs.c_pktflags & IEEE80211_RX_F_AMSDU_MORE) {
+		ni->ni_rx_histogram->rx_amsdu_more++;
+		ni->ni_rx_histogram->numpkts[rxs.c_rate][0]++;
+	}
+
+	if (rxs.c_pktflags & IEEE80211_RX_F_CCK) {
+		ni->ni_rx_histogram->rx_cck++;
+		ni->ni_rx_histogram->numpkts[rxs.c_rate][0]++;
+	}
+
+	if (rxs.c_pktflags & IEEE80211_RX_F_DECRYPTED) {
+		ni->ni_rx_histogram->rx_decrypted++;
+		ni->ni_rx_histogram->numpkts[rxs.c_rate][0]++;
+	}
+
+	if (rxs.c_pktflags & IEEE80211_RX_F_FAIL_FCSCRC) {
+		ni->ni_rx_histogram->rx_fail_fcscrc++;
+		ni->ni_rx_histogram->numpkts[rxs.c_rate][0]++;
+	}
+
+	if (rxs.c_pktflags & IEEE80211_RX_F_FAIL_MIC) {
+		ni->ni_rx_histogram->rx_fail_mic++;
+		ni->ni_rx_histogram->numpkts[rxs.c_rate][0]++;
+	}
+
+	if (rxs.c_pktflags & IEEE80211_RX_F_HT) {
+		ni->ni_rx_histogram->rx_ht++;
+		ni->ni_rx_histogram->numpkts[rxs.c_rate][0]++;
+	}
+
+	if (rxs.c_pktflags & IEEE80211_RX_F_IV_STRIP) {
+		ni->ni_rx_histogram->rx_iv_strip++;
+		ni->ni_rx_histogram->numpkts[rxs.c_rate][0]++;
+	}
+
+        if (rxs.c_pktflags & IEEE80211_RX_F_LDPC) {
+                ni->ni_rx_histogram->rx_ldpc++;
+                ni->ni_rx_histogram->numpkts[rxs.c_rate][0]++;
+        }
+
+	if (rxs.c_pktflags & IEEE80211_RX_F_MMIC_STRIP) {
+		ni->ni_rx_histogram->rx_mmic_strip++;
+		ni->ni_rx_histogram->numpkts[rxs.c_rate][0]++;
+	}
+
+	if (rxs.c_pktflags & IEEE80211_RX_F_OFDM) {
+		ni->ni_rx_histogram->rx_ofdm++;
+		ni->ni_rx_histogram->numpkts[rxs.c_rate][0]++;
+	}
+
+	if (rxs.c_pktflags & IEEE80211_RX_F_SHORTGI) {
+		ni->ni_rx_histogram->rx_shortgi++;
+		ni->ni_rx_histogram->numpkts[rxs.c_rate][0]++;
+	}
+
+	if (rxs.c_pktflags & IEEE80211_RX_F_STBC) {
+		ni->ni_rx_histogram->rx_stbc++;
+		ni->ni_rx_histogram->numpkts[rxs.c_rate][0]++;
+	}
+
+	if (rxs.c_pktflags & IEEE80211_RX_F_VHT) {
+		ni->ni_rx_histogram->rx_vht++;
+		ni->ni_rx_histogram->numpkts[rxs.c_rate][0]++;
+	}
 	//return ieee80211_input(ni, m, rx->rssi, rx->nf);
 	return ni->ni_vap->iv_input(ni, m, &rxs, rxs.c_rssi, rxs.c_nf);
 }

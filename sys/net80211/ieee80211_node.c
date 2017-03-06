@@ -1387,6 +1387,12 @@ ieee80211_alloc_node(struct ieee80211_node_table *nt,
 		return NULL;
 	}
 
+	ni->ni_rx_histogram = malloc(sizeof(struct ieee80211_node_rx_histogram), M_80211_NODE, M_NOWAIT | M_ZERO);
+	if (ni->ni_rx_histogram == NULL) {
+		// TODO: printf
+		printf("histogram data seems absent\n");
+	}
+
 	IEEE80211_DPRINTF(vap, IEEE80211_MSG_NODE,
 		"%s %p<%s> in %s table\n", __func__, ni,
 		ether_sprintf(macaddr), nt->nt_name);
@@ -2072,6 +2078,7 @@ _ieee80211_free_node(struct ieee80211_node *ni)
 	}
 	if (nt != NULL)
 		ieee80211_del_node_nt(nt, ni);
+	free(ni->ni_rx_histogram, M_80211_NODE);
 	ni->ni_ic->ic_node_free(ni);
 }
 

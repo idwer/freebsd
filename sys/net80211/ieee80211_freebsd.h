@@ -653,6 +653,29 @@ struct ieee80211_channel_survey {
 	uint64_t s_tsc;
 };
 
+struct ieee80211_node_rx_histogram {
+	uint64_t rx_ampdu;
+	uint64_t rx_ampdu_more;
+	uint64_t rx_amsdu;
+	uint64_t rx_amsdu_more;
+	uint64_t rx_cck;
+	uint64_t rx_decrypted;
+	uint64_t rx_fail_fcscrc;
+	uint64_t rx_fail_mic;
+	uint64_t rx_ht;
+	uint64_t rx_iv_strip;
+	uint64_t rx_ldpc;
+	uint64_t rx_longgi;
+	uint64_t rx_mmic_strip;
+	uint64_t rx_ofdm;
+	uint64_t rx_shortgi;
+	uint64_t rx_stbc;
+	uint64_t rx_vht;
+	uint32_t numpkts[256][4];
+};
+
+void ieee80211_print_rx_histogram(struct ieee80211_node *ni);
+
 #endif /* _KERNEL */
 
 /*

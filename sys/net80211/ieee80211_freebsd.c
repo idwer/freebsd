@@ -146,6 +146,74 @@ ieee80211_sysctl_msecs_ticks(SYSCTL_HANDLER_ARGS)
 	return 0;
 }
 
+void
+ieee80211_print_rx_histogram(struct ieee80211_node *ni)
+{
+	if (ni->ni_rx_histogram == NULL) {
+		return;
+	}
+
+	int i, j;
+
+	for (i = 0; i < 256; i++) {
+		for (j = 0; j < 4; j++) {
+			if (ni->ni_rx_histogram->numpkts[i][j] > 0) {
+				if (i < 128) {
+					printf("[net80211 histogram] [%s] numpkts[rxs.c_rate=%d (legacy rate)][%d] - numpkts=%d\n",
+					ni->ni_ic->ic_name, i / 2, j, ni->ni_rx_histogram->numpkts[i][j]);
+//					if_printf(ni->ni_vap->iv_ifp, "hi!\n");
+//					printf("[net80211 histogram] numpkts[rxs.c_rate=%d (legacy rate)][%d] - numpkts=%d\n",
+//					i / 2, j, ni->ni_rx_histogram->numpkts[i][j]);
+					printf("[net80211 histogram] [%s] rx_cck counter:%20lu\n", ni->ni_ic->ic_name, ni->ni_rx_histogram->rx_cck);
+					printf("[net80211 histogram] [%s] rx_ofdm counter:%20lu\n", ni->ni_ic->ic_name, ni->ni_rx_histogram->rx_ofdm);
+				}
+				else {
+					printf("[net80211 histogram] [%s] numpkts[rxs.c_rate=%d (MCS%d)][%d] - numpkts=%d\n",
+					ni->ni_ic->ic_name, i, i % 128, j, ni->ni_rx_histogram->numpkts[i][j]);
+//					if_printf(ni->ni_vap->iv_ifp, "hi!\n");
+//					printf("[net80211 histogram] numpkts[rxs.c_rate=%d (MCS%d)][%d] - numpkts=%d\n",
+//					i, i % 128, j, ni->ni_rx_histogram->numpkts[i][j]);
+				}
+			}
+		}
+		printf("[net80211 histogram] [%s] rx_ampdu counter:       %20lu\n", ni->ni_ic->ic_name, ni->ni_rx_histogram->rx_ampdu);
+		printf("[net80211 histogram] [%s] rx_ampdu_more counter:  %20lu\n", ni->ni_ic->ic_name, ni->ni_rx_histogram->rx_ampdu_more);
+		printf("[net80211 histogram] [%s] rx_amsdu counter:       %20lu\n", ni->ni_ic->ic_name, ni->ni_rx_histogram->rx_amsdu);
+		printf("[net80211 histogram] [%s] rx_amsdu_more counter:  %20lu\n", ni->ni_ic->ic_name, ni->ni_rx_histogram->rx_amsdu_more);
+		printf("[net80211 histogram] [%s] rx_ht counter:          %20lu\n", ni->ni_ic->ic_name, ni->ni_rx_histogram->rx_ht);
+		printf("[net80211 histogram] [%s] rx_vht counter:         %20lu\n", ni->ni_ic->ic_name, ni->ni_rx_histogram->rx_vht);
+		printf("[net80211 histogram] [%s] rx_decrypted counter:   %20lu\n", ni->ni_ic->ic_name, ni->ni_rx_histogram->rx_decrypted);
+		printf("[net80211 histogram] [%s] rx_fail_fcscrc counter: %20lu\n", ni->ni_ic->ic_name, ni->ni_rx_histogram->rx_fail_fcscrc);
+		printf("[net80211 histogram] [%s] rx_fail_mic counter:    %20lu\n", ni->ni_ic->ic_name, ni->ni_rx_histogram->rx_fail_mic);
+		printf("[net80211 histogram] [%s] rx_iv_strip counter:    %20lu\n", ni->ni_ic->ic_name, ni->ni_rx_histogram->rx_iv_strip);
+		printf("[net80211 histogram] [%s] rx_ldpc counter;        %20lu\n", ni->ni_ic->ic_name, ni->ni_rx_histogram->rx_ldpc);
+		printf("[net80211 histogram] [%s] rx_longgi counter:      %20lu\n", ni->ni_ic->ic_name, ni->ni_rx_histogram->rx_longgi);
+		printf("[net80211 histogram] [%s] rx_mmic_strip counter:  %20lu\n", ni->ni_ic->ic_name, ni->ni_rx_histogram->rx_mmic_strip);
+		printf("[net80211 histogram] [%s] rx_shortgi counter:     %20lu\n", ni->ni_ic->ic_name, ni->ni_rx_histogram->rx_shortgi);
+		printf("[net80211 histogram] [%s] rx_stbc counter:        %20lu\n", ni->ni_ic->ic_name, ni->ni_rx_histogram->rx_stbc);
+	}
+}
+
+static void
+ieee80211_iterate_rx_histogram(void *arg, struct ieee80211_node *ni)
+{
+	ieee80211_print_rx_histogram(ni);
+}
+
+static int
+ieee80211_sysctl_rx_histogram(SYSCTL_HANDLER_ARGS)
+{
+	struct ieee80211vap *vap = arg1;
+	int t = 0, error;
+
+	error = sysctl_handle_int(oidp, &t, 0, req);
+	if (error || !req->newptr)
+		return error;
+
+	ieee80211_iterate_nodes_vap(&vap->iv_ic->ic_sta, vap, ieee80211_iterate_rx_histogram, NULL);
+	return 0;
+}
+
 static int
 ieee80211_sysctl_inact(SYSCTL_HANDLER_ARGS)
 {
@@ -294,6 +362,10 @@ ieee80211_sysctl_vattach(struct ieee80211vap *vap)
 	}
 	vap->iv_sysctl = ctx;
 	vap->iv_oid = oid;
+	SYSCTL_ADD_PROC(ctx, SYSCTL_CHILDREN(oid), OID_AUTO,
+		"get_rx_histogram", CTLTYPE_INT | CTLFLAG_RW, vap, 0,
+		ieee80211_sysctl_rx_histogram, "I",
+		"get_rx_histogram");
 }
 
 void

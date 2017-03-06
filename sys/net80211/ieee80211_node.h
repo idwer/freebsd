@@ -68,6 +68,7 @@ struct ieee80211_node_table;
 struct ieee80211com;
 struct ieee80211vap;
 struct ieee80211_scanparams;
+struct ieee80211_node_rx_histogram;
 
 /*
  * Information element ``blob''.  We use this structure
@@ -257,6 +258,9 @@ struct ieee80211_node {
 	struct			ieee80211_quiet_ie ni_quiet_ie;	/* last seen quiet IE */
 
 	uint64_t		ni_spare[3];
+
+	/* RX stats */
+	struct ieee80211_node_rx_histogram *ni_rx_histogram;
 };
 MALLOC_DECLARE(M_80211_NODE);
 MALLOC_DECLARE(M_80211_NODE_IE);
