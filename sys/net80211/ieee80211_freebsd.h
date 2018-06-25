@@ -653,6 +653,10 @@ struct ieee80211_channel_survey {
 	uint64_t s_tsc;
 };
 
+/* Table 8-54, element IDs */
+#define HISTOGRAM_MAX_RATE_IDX 256
+/* Supported Rates element, OperationalRateSet, divided by 2 */
+#define HISTOGRAM_MAX_RATE_ELEMENT 4
 struct ieee80211_node_rx_histogram {
 	uint64_t rx_ampdu;
 	uint64_t rx_ampdu_more;
@@ -665,13 +669,13 @@ struct ieee80211_node_rx_histogram {
 	uint64_t rx_ht;
 	uint64_t rx_iv_strip;
 	uint64_t rx_ldpc;
-	uint64_t rx_longgi;
+	uint64_t rx_longgi; /* N/A */
 	uint64_t rx_mmic_strip;
 	uint64_t rx_ofdm;
 	uint64_t rx_shortgi;
 	uint64_t rx_stbc;
 	uint64_t rx_vht;
-	uint32_t numpkts[256][4];
+	uint32_t numpkts[HISTOGRAM_MAX_RATE_IDX][HISTOGRAM_MAX_RATE_ELEMENT];
 };
 
 void ieee80211_print_rx_histogram(struct ieee80211_node *ni);

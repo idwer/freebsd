@@ -97,6 +97,9 @@ ieee80211_input_mimo(struct ieee80211_node *ni, struct mbuf *m)
 	/* XXX should assert IEEE80211_R_NF and IEEE80211_R_RSSI are set */
 	ieee80211_process_mimo(ni, &rxs);
 
+	if (ni->ni_rx_histogram == NULL)
+		return ni->ni_vap->iv_input(ni, m, &rxs, rxs.c_rssi, rxs.c_nf);
+
 	/* single matches */
 	if (rxs.c_pktflags & IEEE80211_RX_F_AMPDU) {
 		ni->ni_rx_histogram->rx_ampdu++;
@@ -148,10 +151,10 @@ ieee80211_input_mimo(struct ieee80211_node *ni, struct mbuf *m)
 		ni->ni_rx_histogram->numpkts[rxs.c_rate][0]++;
 	}
 
-        if (rxs.c_pktflags & IEEE80211_RX_F_LDPC) {
-                ni->ni_rx_histogram->rx_ldpc++;
-                ni->ni_rx_histogram->numpkts[rxs.c_rate][0]++;
-        }
+	if (rxs.c_pktflags & IEEE80211_RX_F_LDPC) {
+	        ni->ni_rx_histogram->rx_ldpc++;
+	        ni->ni_rx_histogram->numpkts[rxs.c_rate][0]++;
+	}
 
 	if (rxs.c_pktflags & IEEE80211_RX_F_MMIC_STRIP) {
 		ni->ni_rx_histogram->rx_mmic_strip++;
