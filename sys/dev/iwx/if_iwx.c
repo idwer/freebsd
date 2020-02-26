@@ -68,10 +68,17 @@ __FBSDID("$FreeBSD$");
 #include <dev/iwx/if_iwx_pcie_trans.h>
 #include <dev/iwx/if_iwx_fw.h>
 
+/*
+ * Autoconf glue-sniffing
+ */
+#define	PCI_VENDOR_INTEL		0x8086
+#define	PCI_PRODUCT_INTEL_WL_22500_1	0x2723
+
 static const struct iwx_devices {
 	uint16_t		device;
 	const struct iwx_cfg	*cfg;
 } iwx_devices[] = {
+	{ PCI_PRODUCT_INTEL_WL_22500_1, &iwx22500_cfg },
 };
 
 static device_method_t iwx_pci_methods[] = {
