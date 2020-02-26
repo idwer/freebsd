@@ -189,6 +189,7 @@ SUBDIR=	\
 	${_iwmfw} \
 	${_iwn} \
 	${_iwnfw} \
+	${_iwx} \
 	${_iwxfw} \
 	${_ix} \
 	${_ixv} \
@@ -662,6 +663,7 @@ _ipw=		ipw
 _iwi=		iwi
 _iwm=		iwm
 _iwn=		iwn
+_iwx=		iwx
 .if ${MK_SOURCELESS_UCODE} != "no"
 _ipwfw=		ipwfw
 _iwifw=		iwifw
