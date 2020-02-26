@@ -189,6 +189,7 @@ SUBDIR=	\
 	${_iwmfw} \
 	${_iwn} \
 	${_iwnfw} \
+	${_iwxfw} \
 	${_ix} \
 	${_ixv} \
 	${_ixl} \
@@ -666,6 +667,7 @@ _ipwfw=		ipwfw
 _iwifw=		iwifw
 _iwmfw=		iwmfw
 _iwnfw=		iwnfw
+_iwxfw=		iwxfw
 .endif
 _mly=		mly
 _nfe=		nfe
