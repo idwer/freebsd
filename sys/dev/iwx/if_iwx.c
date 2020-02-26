@@ -81,10 +81,26 @@ static const struct iwx_devices {
 	{ PCI_PRODUCT_INTEL_WL_22500_1, &iwx22500_cfg },
 };
 
+static int
+iwx_probe(device_t dev)
+{
+	int i;
+
+	for (i = 0; i < nitems(iwx_devices); i++) {
+		if (pci_get_vendor(dev) == PCI_VENDOR_INTEL &&
+		    pci_get_device(dev) == iwx_devices[i].device) {
+			device_set_desc(dev, iwx_devices[i].cfg->name);
+			return (BUS_PROBE_DEFAULT);
+		}
+	}
+
+	return (ENXIO);
+}
+
 static device_method_t iwx_pci_methods[] = {
         /* Device interface */
-#if 0
 	DEVMETHOD(device_probe,         iwx_probe),
+#if 0
         DEVMETHOD(device_attach,        iwx_attach),
         DEVMETHOD(device_detach,        iwx_detach),
         DEVMETHOD(device_suspend,       iwx_suspend),
