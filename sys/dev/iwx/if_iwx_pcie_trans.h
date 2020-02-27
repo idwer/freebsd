@@ -106,36 +106,37 @@
 #ifndef	__IWM_PCIE_TRANS_H__
 #define	__IWM_PCIE_TRANS_H__
 
-extern	uint32_t iwm_read_prph(struct iwm_softc *sc, uint32_t addr);
-extern	void iwm_write_prph(struct iwm_softc *sc, uint32_t addr, uint32_t val);
-extern	void iwm_write_prph64(struct iwm_softc *sc, uint64_t addr,
-    uint64_t val);
-extern	int iwm_poll_prph(struct iwm_softc *sc, uint32_t addr, uint32_t bits,
+extern	uint32_t iwx_read_prph(struct iwx_softc *sc, uint32_t addr);
+extern	void iwx_write_prph(struct iwx_softc *sc, uint32_t addr, uint32_t val);
+extern	void iwx_write_prph64(struct iwx_softc *sc, uint64_t addr,
+	uint64_t val);
+extern	int iwx_poll_prph(struct iwx_softc *sc, uint32_t addr, uint32_t bits,
     uint32_t mask, int timeout);
-extern	int iwm_read_mem(struct iwm_softc *sc, uint32_t addr, void *buf, int dwords);
-extern	int iwm_write_mem(struct iwm_softc *sc, uint32_t addr, const void *buf,
-		int dwords);
-extern	int iwm_write_mem32(struct iwm_softc *sc, uint32_t addr, uint32_t val);
-extern	int iwm_poll_bit(struct iwm_softc *sc, int reg,
-	uint32_t bits, uint32_t mask, int timo);
-extern	int iwm_nic_lock(struct iwm_softc *sc);
-extern	void iwm_nic_unlock(struct iwm_softc *sc);
-extern	void iwm_set_bits_mask_prph(struct iwm_softc *sc,
+extern	int iwx_read_mem(struct iwx_softc *sc, uint32_t addr, void *buf, int dwords);
+extern	int iwx_write_mem(struct iwx_softc *sc, uint32_t addr, const void *buf,
+	int dwords);
+extern	int iwx_write_mem32(struct iwx_softc *sc, uint32_t addr, uint32_t val);
+extern	int iwx_poll_bit(struct iwx_softc *sc, int reg,
+ 	uint32_t bits, uint32_t mask, int timo);
+extern	int iwx_nic_lock(struct iwx_softc *sc);
+extern	void iwx_nic_unlock(struct iwx_softc *sc);
+extern	void iwx_set_bits_mask_prph(struct iwx_softc *sc,
 	uint32_t reg, uint32_t bits, uint32_t mask);
-extern	void iwm_set_bits_prph(struct iwm_softc *sc, uint32_t reg, uint32_t bits);
-extern	void iwm_clear_bits_prph(struct iwm_softc *sc, uint32_t reg, uint32_t bits);
-extern	void iwm_enable_rfkill_int(struct iwm_softc *sc);
-extern	int iwm_check_rfkill(struct iwm_softc *sc);
-extern	int iwm_set_hw_ready(struct iwm_softc *sc);
-extern	int iwm_prepare_card_hw(struct iwm_softc *sc);
-extern	void iwm_apm_config(struct iwm_softc *sc);
-extern	int iwm_apm_init(struct iwm_softc *sc);
-extern	void iwm_apm_stop(struct iwm_softc *sc);
-extern	int iwm_start_hw(struct iwm_softc *sc);
-extern	void iwm_set_pwr(struct iwm_softc *sc);
-extern	int iwm_pcie_rx_stop(struct iwm_softc *sc);
+extern	void iwx_set_bits_prph(struct iwx_softc *sc, uint32_t reg, uint32_t bits);
+extern	void iwx_clear_bits_prph(struct iwx_softc *sc, uint32_t reg, uint32_t bits);
+extern	void iwx_enable_rfkill_int(struct iwx_softc *sc);
+extern	int iwx_check_rfkill(struct iwx_softc *sc);
+extern	int iwx_set_hw_ready(struct iwx_softc *sc);
+extern	int iwx_prepare_card_hw(struct iwx_softc *sc);
+extern	void iwx_apm_config(struct iwx_softc *sc);
+extern	int iwx_apm_init(struct iwx_softc *sc);
+extern	void iwx_apm_stop(struct iwx_softc *sc);
+extern	int iwx_start_hw(struct iwx_softc *sc);
+extern	void iwx_set_pwr(struct iwx_softc *sc);
+// extern	int iwm_pcie_rx_stop(struct iwx_softc *sc);
+extern	int iwx_pcie_rx_stop(struct iwx_softc *sc);
 
-extern	int iwm_pcie_set_cmd_in_flight(struct iwm_softc *sc);
-extern	void iwm_pcie_clear_cmd_in_flight(struct iwm_softc *sc);
+extern	int iwx_pcie_set_cmd_in_flight(struct iwx_softc *sc);
+extern	void iwx_pcie_clear_cmd_in_flight(struct iwx_softc *sc);
 
 #endif
