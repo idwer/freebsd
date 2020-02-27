@@ -81,15 +81,15 @@
 /*
  * Block paging calculations
  */
-#define IWM_PAGE_2_EXP_SIZE 12 /* 4K == 2^12 */
-#define IWM_FW_PAGING_SIZE (1 << IWM_PAGE_2_EXP_SIZE) /* page size is 4KB */
-#define IWM_PAGE_PER_GROUP_2_EXP_SIZE 3
+#define IWX_PAGE_2_EXP_SIZE 12 /* 4K == 2^12 */
+#define IWX_FW_PAGING_SIZE (1 << IWX_PAGE_2_EXP_SIZE) /* page size is 4KB */
+#define IWX_PAGE_PER_GROUP_2_EXP_SIZE 3
 /* 8 pages per group */
-#define IWM_NUM_OF_PAGE_PER_GROUP (1 << IWM_PAGE_PER_GROUP_2_EXP_SIZE)
+#define IWX_NUM_OF_PAGE_PER_GROUP (1 << IWX_PAGE_PER_GROUP_2_EXP_SIZE)
 /* don't change, support only 32KB size */
-#define IWM_PAGING_BLOCK_SIZE (IWM_NUM_OF_PAGE_PER_GROUP * IWM_FW_PAGING_SIZE)
+#define IWX_PAGING_BLOCK_SIZE (IWX_NUM_OF_PAGE_PER_GROUP * IWX_FW_PAGING_SIZE)
 /* 32K == 2^15 */
-#define IWM_BLOCK_2_EXP_SIZE (IWM_PAGE_2_EXP_SIZE + IWM_PAGE_PER_GROUP_2_EXP_SIZE)
+#define IWX_BLOCK_2_EXP_SIZE (IWX_PAGE_2_EXP_SIZE + IWX_PAGE_PER_GROUP_2_EXP_SIZE)
 
 /*
  * Image paging calculations
@@ -103,13 +103,13 @@
 /* Virtual address signature */
 #define IWM_PAGING_ADDR_SIG 0xAA000000
 
-#define IWM_PAGING_CMD_IS_SECURED (1 << 9)
-#define IWM_PAGING_CMD_IS_ENABLED (1 << 8)
-#define IWM_PAGING_CMD_NUM_OF_PAGES_IN_LAST_GRP_POS 0
+#define IWX_PAGING_CMD_IS_SECURED (1 << 9)
+#define IWX_PAGING_CMD_IS_ENABLED (1 << 8)
+#define IWX_PAGING_CMD_NUM_OF_PAGES_IN_LAST_GRP_POS 0
 #define IWM_PAGING_TLV_SECURE_MASK 1
 
-extern	void iwm_free_fw_paging(struct iwm_softc *);
-extern	int iwm_save_fw_paging(struct iwm_softc *, const struct iwm_fw_img *);
-extern	int iwm_send_paging_cmd(struct iwm_softc *, const struct iwm_fw_img *);
+extern	void iwx_free_fw_paging(struct iwx_softc *);
+extern	int iwx_save_fw_paging(struct iwx_softc *, const struct iwx_fw_img *);
+extern	int iwx_send_paging_cmd(struct iwx_softc *, const struct iwx_fw_img *);
 
 #endif	/* __IF_IWM_FW_H__ */

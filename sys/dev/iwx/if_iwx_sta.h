@@ -201,25 +201,25 @@
 /**
  * Send the STA info to the FW.
  *
- * @sc: the iwm_softc* to use
+ * @sc: the iwx_softc* to use
  * @sta: the STA
  * @update: this is true if the FW is being updated about a STA it already knows
  *	about. Otherwise (if this is a new STA), this should be false.
  * @flags: if update==true, this marks what is being changed via ORs of values
  *	from enum iwm_sta_modify_flag. Otherwise, this is ignored.
  */
-extern	int iwm_sta_send_to_fw(struct iwm_softc *sc, struct iwm_node *in,
+extern	int iwx_sta_send_to_fw(struct iwx_softc *sc, struct iwx_node *in,
 				   boolean_t update);
-extern	int iwm_add_sta(struct iwm_softc *sc, struct iwm_node *in);
-extern	int iwm_update_sta(struct iwm_softc *sc, struct iwm_node *in);
-extern	int iwm_rm_sta(struct iwm_softc *sc, struct ieee80211vap *vap,
+extern	int iwm_add_sta(struct iwx_softc *sc, struct iwx_node *in);
+extern	int iwm_update_sta(struct iwx_softc *sc, struct iwx_node *in);
+extern	int iwm_rm_sta(struct iwx_softc *sc, struct ieee80211vap *vap,
 			   boolean_t is_assoc);
-extern	int iwm_rm_sta_id(struct iwm_softc *sc, struct ieee80211vap *vap);
+extern	int iwm_rm_sta_id(struct iwx_softc *sc, struct ieee80211vap *vap);
 
-extern	int iwm_add_aux_sta(struct iwm_softc *sc);
-extern	void iwm_del_aux_sta(struct iwm_softc *sc);
+extern	int iwx_add_aux_sta(struct iwx_softc *sc);
+extern	void iwm_del_aux_sta(struct iwx_softc *sc);
 
-extern	int iwm_drain_sta(struct iwm_softc *sc, struct iwm_vap *ivp,
+extern	int iwm_drain_sta(struct iwx_softc *sc, struct iwx_vap *ivp,
 			      boolean_t drain);
 
 #endif /* __IF_IWM_STA_H__ */

@@ -10,7 +10,6 @@ SRCS+=	if_iwx_power.c if_iwx_scan.c if_iwx_sf.c if_iwx_sta.c
 SRCS+=	if_iwx_time_event.c if_iwx_util.c
 # bus layer
 SRCS+=	if_iwx_pcie_trans.c
-
 SRCS+=	device_if.h bus_if.h pci_if.h opt_wlan.h opt_iwx.h
 
 CFLAGS+= -DIWX_DEBUG

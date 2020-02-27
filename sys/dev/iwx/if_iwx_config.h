@@ -78,9 +78,11 @@
 
 enum iwm_device_family {
 	IWM_DEVICE_FAMILY_UNDEFINED,
+#if 0
 	IWM_DEVICE_FAMILY_7000,
 	IWM_DEVICE_FAMILY_8000,
 	IWM_DEVICE_FAMILY_9000,
+#endif
 };
 
 #define IWM_DEFAULT_MAX_TX_POWER	22
@@ -114,14 +116,15 @@ static inline uint8_t num_of_ant(uint8_t mask)
  * @IWM_NVM_EXT: extended NVM format
  * @IWM_NVM_SDP: NVM format used by 3168 series
  */
-enum iwm_nvm_type {
+/* ported from openbsd */
+enum iwx_nvm_type {
 	IWM_NVM,
 	IWM_NVM_EXT,
-	IWM_NVM_SDP,
+//	IWX_NVM_SDP,
 };
 
 /**
- * struct iwm_cfg
+ * struct iwx_cfg
  * @name: Official name of the device
  * @fw_name: Firmware filename.
  * @host_interrupt_operation_mode: device needs host interrupt operation
@@ -131,7 +134,7 @@ enum iwm_nvm_type {
  *      is in flight. This is due to a HW bug in 7260, 3160 and 7265.
  * @nvm_type: see &enum iwl_nvm_type
  */
-struct iwm_cfg {
+struct iwx_cfg {
 	const char *name;
 	const char *fw_name;
 	uint16_t eeprom_size;
@@ -141,12 +144,13 @@ struct iwm_cfg {
 	int integrated;
 	uint8_t nvm_hw_section_num;
 	int apmg_wake_up_wa;
-	enum iwm_nvm_type nvm_type;
+	enum iwx_nvm_type nvm_type;
 };
 
 /*
  * This list declares the config structures for all devices.
  */
+#if 0
 extern const struct iwm_cfg iwm7260_cfg;
 extern const struct iwm_cfg iwm3160_cfg;
 extern const struct iwm_cfg iwm3165_cfg;
@@ -157,5 +161,7 @@ extern const struct iwm_cfg iwm8260_cfg;
 extern const struct iwm_cfg iwm8265_cfg;
 extern const struct iwm_cfg iwm9560_cfg;
 extern const struct iwm_cfg iwm9260_cfg;
+#endif
+extern const struct iwx_cfg iwx22500_cfg;
 
 #endif /* __IWM_CONFIG_H__ */
