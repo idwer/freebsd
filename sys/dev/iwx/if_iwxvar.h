@@ -399,7 +399,7 @@ struct iwx_node {
 #define	IWM_DEFAULT_TSFID	0
 
 #define IWX_ICT_SIZE		4096
-#define IWM_ICT_COUNT		(IWM_ICT_SIZE / sizeof (uint32_t))
+#define IWX_ICT_COUNT		(IWX_ICT_SIZE / sizeof (uint32_t))
 #define IWX_ICT_PADDR_SHIFT	12
 
 struct iwx_cfg;
@@ -558,7 +558,7 @@ struct iwx_softc {
 	int			sc_time_event_end_ticks;
 };
 
-#define IWM_LOCK_INIT(_sc) \
+#define IWX_LOCK_INIT(_sc) \
 	mtx_init(&(_sc)->sc_mtx, device_get_nameunit((_sc)->sc_dev), \
 	    MTX_NETWORK_LOCK, MTX_DEF);
 #define	IWX_LOCK(_sc)		mtx_lock(&(_sc)->sc_mtx)

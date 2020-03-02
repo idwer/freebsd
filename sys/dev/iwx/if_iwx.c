@@ -232,7 +232,7 @@ static void	iwx_stop(struct iwx_softc *);
 // static void	iwm_handle_rxb(struct iwm_softc *, struct mbuf *);
 // static void	iwm_notif_intr(struct iwm_softc *);
 // static void	iwm_intr(void *);
-// static int	iwm_attach(device_t);
+static int	iwx_attach(device_t);
 static int	iwx_is_valid_ether_addr(uint8_t *);
 // static void	iwm_preinit(void *);
 // static int	iwm_detach_local(struct iwm_softc *sc, int);
@@ -2485,6 +2485,213 @@ iwx_stop(struct iwx_softc *sc)
 }
 
 /*
+ * Process an IWM_CSR_INT_BIT_FH_RX or IWM_CSR_INT_BIT_SW_RX interrupt.
+ * Basic structure from if_iwn
+ */
+static void
+iwx_notif_intr(struct iwx_softc *sc)
+{
+	int count;
+	uint32_t wreg;
+	uint16_t hw;
+
+	bus_dmamap_sync(sc->rxq.stat_dma.tag, sc->rxq.stat_dma.map,
+	    BUS_DMASYNC_POSTREAD);
+
+	if (sc->cfg->mqrx_supported) {
+		count = IWX_RX_MQ_RING_COUNT;
+		wreg = IWX_RFH_Q0_FRBDCB_WIDX_TRG;
+	} else {
+		count = IWX_RX_LEGACY_RING_COUNT;
+		wreg = IWX_FH_RSCSR_CHNL0_WPTR;
+	}
+
+	hw = le16toh(sc->rxq.stat->closed_rb_num) & 0xfff;
+
+	/*
+	 * Process responses
+	 */
+	while (sc->rxq.cur != hw) {
+		struct iwx_rx_ring *ring = &sc->rxq;
+		struct iwx_rx_data *data = &ring->data[ring->cur];
+
+		bus_dmamap_sync(ring->data_dmat, data->map,
+		    BUS_DMASYNC_POSTREAD);
+
+		IWX_DPRINTF(sc, IWX_DEBUG_INTR,
+		    "%s: hw = %d cur = %d\n", __func__, hw, ring->cur);
+		iwx_handle_rxb(sc, data->m);
+
+		ring->cur = (ring->cur + 1) % count;
+	}
+
+	/*
+	 * Tell the firmware that it can reuse the ring entries that
+	 * we have just processed.
+	 * Seems like the hardware gets upset unless we align
+	 * the write by 8??
+	 */
+	hw = (hw == 0) ? count - 1 : hw - 1;
+	IWX_WRITE(sc, wreg, rounddown2(hw, 8));
+}
+
+static void
+iwx_intr(void *arg)
+{
+	struct iwx_softc *sc = arg;
+	int handled = 0;
+	int r1, r2, rv = 0;
+	int isperiodic = 0;
+
+	IWX_LOCK(sc);
+	IWX_WRITE(sc, IWX_CSR_INT_MASK, 0);
+
+	if (sc->sc_flags & IWX_FLAG_USE_ICT) {
+		uint32_t *ict = sc->ict_dma.vaddr;
+		int tmp;
+
+		tmp = htole32(ict[sc->ict_cur]);
+		if (!tmp)
+			goto out_ena;
+
+		/*
+		 * ok, there was something.  keep plowing until we have all.
+		 */
+		r1 = r2 = 0;
+		while (tmp) {
+			r1 |= tmp;
+			ict[sc->ict_cur] = 0;
+			sc->ict_cur = (sc->ict_cur+1) % IWX_ICT_COUNT;
+			tmp = htole32(ict[sc->ict_cur]);
+		}
+
+		/* this is where the fun begins.  don't ask */
+		if (r1 == 0xffffffff)
+			r1 = 0;
+
+		/* i am not expected to understand this */
+		if (r1 & 0xc0000)
+			r1 |= 0x8000;
+		r1 = (0xff & r1) | ((0xff00 & r1) << 16);
+	} else {
+		r1 = IWX_READ(sc, IWX_CSR_INT);
+		/* "hardware gone" (where, fishing?) */
+		if (r1 == 0xffffffff || (r1 & 0xfffffff0) == 0xa5a5a5a0)
+			goto out;
+		r2 = IWX_READ(sc, IWX_CSR_FH_INT_STATUS);
+	}
+	if (r1 == 0 && r2 == 0) {
+		goto out_ena;
+	}
+
+	IWX_WRITE(sc, IWX_CSR_INT, r1 | ~sc->sc_intmask);
+
+	/* Safely ignore these bits for debug checks below */
+	r1 &= ~(IWX_CSR_INT_BIT_ALIVE | IWX_CSR_INT_BIT_SCD);
+
+	if (r1 & IWX_CSR_INT_BIT_SW_ERR) {
+		int i;
+		struct ieee80211com *ic = &sc->sc_ic;
+		struct ieee80211vap *vap = TAILQ_FIRST(&ic->ic_vaps);
+
+#ifdef IWX_DEBUG
+		iwx_nic_error(sc);
+#endif
+		/* Dump driver status (TX and RX rings) while we're here. */
+		device_printf(sc->sc_dev, "driver status:\n");
+		for (i = 0; i < IWX_MAX_QUEUES; i++) {
+			struct iwx_tx_ring *ring = &sc->txq[i];
+			device_printf(sc->sc_dev,
+			    "  tx ring %2d: qid=%-2d cur=%-3d "
+			    "queued=%-3d\n",
+			    i, ring->qid, ring->cur, ring->queued);
+		}
+		device_printf(sc->sc_dev,
+		    "  rx ring: cur=%d\n", sc->rxq.cur);
+		device_printf(sc->sc_dev,
+		    "  802.11 state %d\n", (vap == NULL) ? -1 : vap->iv_state);
+
+		/* Reset our firmware state tracking. */
+		sc->sc_firmware_state = 0;
+		/* Don't stop the device; just do a VAP restart */
+		IWX_UNLOCK(sc);
+
+		if (vap == NULL) {
+			printf("%s: null vap\n", __func__);
+			return;
+		}
+
+		device_printf(sc->sc_dev, "%s: controller panicked, iv_state = %d; "
+		    "restarting\n", __func__, vap->iv_state);
+
+		ieee80211_restart_all(ic);
+		return;
+	}
+
+	if (r1 & IWX_CSR_INT_BIT_HW_ERR) {
+		handled |= IWX_CSR_INT_BIT_HW_ERR;
+		device_printf(sc->sc_dev, "hardware error, stopping device\n");
+		iwx_stop(sc);
+		rv = 1;
+		goto out;
+	}
+
+	/* firmware chunk loaded */
+	if (r1 & IWX_CSR_INT_BIT_FH_TX) {
+		IWX_WRITE(sc, IWX_CSR_FH_INT_STATUS, IWX_CSR_FH_INT_TX_MASK);
+		handled |= IWX_CSR_INT_BIT_FH_TX;
+		sc->sc_fw_chunk_done = 1;
+		wakeup(&sc->sc_fw);
+	}
+
+	if (r1 & IWX_CSR_INT_BIT_RF_KILL) {
+		handled |= IWX_CSR_INT_BIT_RF_KILL;
+		if (iwx_check_rfkill(sc)) {
+			device_printf(sc->sc_dev,
+			    "%s: rfkill switch, disabling interface\n",
+			    __func__);
+			iwx_stop(sc);
+		}
+	}
+
+	/*
+	 * The Linux driver uses periodic interrupts to avoid races.
+	 * We cargo-cult like it's going out of fashion.
+	 */
+	if (r1 & IWX_CSR_INT_BIT_RX_PERIODIC) {
+		handled |= IWX_CSR_INT_BIT_RX_PERIODIC;
+		IWX_WRITE(sc, IWX_CSR_INT, IWX_CSR_INT_BIT_RX_PERIODIC);
+		if ((r1 & (IWX_CSR_INT_BIT_FH_RX | IWX_CSR_INT_BIT_SW_RX)) == 0)
+			IWX_WRITE_1(sc,
+			    IWX_CSR_INT_PERIODIC_REG, IWX_CSR_INT_PERIODIC_DIS);
+		isperiodic = 1;
+	}
+
+	if ((r1 & (IWX_CSR_INT_BIT_FH_RX | IWX_CSR_INT_BIT_SW_RX)) || isperiodic) {
+		handled |= (IWX_CSR_INT_BIT_FH_RX | IWX_CSR_INT_BIT_SW_RX);
+		IWX_WRITE(sc, IWX_CSR_FH_INT_STATUS, IWX_CSR_FH_INT_RX_MASK);
+
+		iwx_notif_intr(sc);
+
+		/* enable periodic interrupt, see above */
+		if (r1 & (IWX_CSR_INT_BIT_FH_RX | IWX_CSR_INT_BIT_SW_RX) && !isperiodic)
+			IWX_WRITE_1(sc, IWX_CSR_INT_PERIODIC_REG,
+			    IWX_CSR_INT_PERIODIC_ENA);
+	}
+
+	if (__predict_false(r1 & ~handled))
+		IWX_DPRINTF(sc, IWX_DEBUG_INTR,
+		    "%s: unhandled interrupts: %x\n", __func__, r1);
+	rv = 1;
+
+ out_ena:
+	iwx_restore_interrupts(sc);
+ out:
+	IWX_UNLOCK(sc);
+	return;
+}
+
+/*
  * Autoconf glue-sniffing
  */
 #define	PCI_VENDOR_INTEL		0x8086
@@ -2499,8 +2706,6 @@ static const struct iwx_devices {
 
 /* PCI registers */
 #define PCI_CFG_RETRY_TIMEOUT	0x041 /* shared with iwm */
-
-// static int iwm_pci_attach()
 
 static int
 iwx_probe(device_t dev)
@@ -2518,6 +2723,60 @@ iwx_probe(device_t dev)
 	return (ENXIO);
 }
 
+static int
+iwx_pci_attach(device_t dev)
+{
+	struct iwx_softc *sc;
+	int count, error, rid;
+	uint16_t reg;
+
+	sc = device_get_softc(dev);
+
+	/* We disable the RETRY_TIMEOUT register (0x41) to keep
+	 * PCI Tx retries from interfering with C3 CPU state */
+	pci_write_config(dev, PCI_CFG_RETRY_TIMEOUT, 0x00, 1);
+
+	/* Enable bus-mastering and hardware bug workaround. */
+	pci_enable_busmaster(dev);
+	reg = pci_read_config(dev, PCIR_STATUS, sizeof(reg));
+	/* if !MSI */
+	if (reg & PCIM_STATUS_INTxSTATE) {
+		reg &= ~PCIM_STATUS_INTxSTATE;
+	}
+	pci_write_config(dev, PCIR_STATUS, reg, sizeof(reg));
+
+	rid = PCIR_BAR(0);
+	sc->sc_mem = bus_alloc_resource_any(dev, SYS_RES_MEMORY, &rid,
+	    RF_ACTIVE);
+	if (sc->sc_mem == NULL) {
+		device_printf(sc->sc_dev, "can't map mem space\n");
+		return (ENXIO);
+	}
+	sc->sc_st = rman_get_bustag(sc->sc_mem);
+	sc->sc_sh = rman_get_bushandle(sc->sc_mem);
+
+	/* Install interrupt handler. */
+	count = 1;
+	rid = 0;
+	if (pci_alloc_msi(dev, &count) == 0)
+		rid = 1;
+	sc->sc_irq = bus_alloc_resource_any(dev, SYS_RES_IRQ, &rid, RF_ACTIVE |
+	    (rid != 0 ? 0 : RF_SHAREABLE));
+	if (sc->sc_irq == NULL) {
+		device_printf(dev, "can't map interrupt\n");
+			return (ENXIO);
+	}
+	error = bus_setup_intr(dev, sc->sc_irq, INTR_TYPE_NET | INTR_MPSAFE,
+	    NULL, iwx_intr, sc, &sc->sc_ih);
+	if (sc->sc_ih == NULL) {
+		device_printf(dev, "can't establish interrupt");
+			return (ENXIO);
+	}
+	sc->sc_dmat = bus_get_dma_tag(sc->sc_dev);
+
+	return (0);
+}
+
 static void
 iwx_pci_detach(device_t dev)
 {
@@ -2532,6 +2791,223 @@ iwx_pci_detach(device_t dev)
 	if (sc->sc_mem != NULL)
 		bus_release_resource(dev, SYS_RES_MEMORY,
 		    rman_get_rid(sc->sc_mem), sc->sc_mem);
+}
+
+static int
+iwx_attach(device_t dev)
+{
+	struct iwx_softc *sc = device_get_softc(dev);
+	struct ieee80211com *ic = &sc->sc_ic;
+	int error;
+	int txq_i, i;
+
+	sc->sc_dev = dev;
+	sc->sc_attached = 1;
+	IWX_LOCK_INIT(sc);
+	mbufq_init(&sc->sc_snd, ifqmaxlen);
+	callout_init_mtx(&sc->sc_watchdog_to, &sc->sc_mtx, 0);
+	callout_init_mtx(&sc->sc_led_blink_to, &sc->sc_mtx, 0);
+	TASK_INIT(&sc->sc_es_task, 0, iwx_endscan_cb, sc);
+
+	error = iwx_dev_check(dev);
+	if (error != 0)
+		goto fail;
+
+	sc->sc_notif_wait = iwx_notification_wait_init(sc);
+	if (sc->sc_notif_wait == NULL) {
+		device_printf(dev, "failed to init notification wait struct\n");
+		goto fail;
+	}
+
+	sc->sf_state = IWX_SF_UNINIT;
+
+	/* Init phy db */
+	sc->sc_phy_db = iwx_phy_db_init(sc);
+	if (!sc->sc_phy_db) {
+		device_printf(dev, "Cannot init phy_db\n");
+		goto fail;
+	}
+
+	/* Set EBS as successful as long as not stated otherwise by the FW. */
+	sc->last_ebs_successful = TRUE;
+
+	/* PCI attach */
+	error = iwx_pci_attach(dev);
+	if (error != 0)
+		goto fail;
+
+	sc->sc_wantresp = -1;
+
+	sc->sc_hw_rev = IWX_READ(sc, IWX_CSR_HW_REV);
+#if 0
+	/*
+	 * In the 8000 HW family the format of the 4 bytes of CSR_HW_REV have
+	 * changed, and now the revision step also includes bit 0-1 (no more
+	 * "dash" value). To keep hw_rev backwards compatible - we'll store it
+	 * in the old format.
+	 */
+	if (sc->cfg->device_family >= IWM_DEVICE_FAMILY_8000) {
+		int ret;
+		uint32_t hw_step;
+
+		sc->sc_hw_rev = (sc->sc_hw_rev & 0xfff0) |
+				(IWM_CSR_HW_REV_STEP(sc->sc_hw_rev << 2) << 2);
+
+		if (iwm_prepare_card_hw(sc) != 0) {
+			device_printf(dev, "could not initialize hardware\n");
+			goto fail;
+		}
+
+		/*
+		 * In order to recognize C step the driver should read the
+		 * chip version id located at the AUX bus MISC address.
+		 */
+		IWM_SETBITS(sc, IWM_CSR_GP_CNTRL,
+			    IWM_CSR_GP_CNTRL_REG_FLAG_INIT_DONE);
+		DELAY(2);
+
+		ret = iwm_poll_bit(sc, IWM_CSR_GP_CNTRL,
+				   IWM_CSR_GP_CNTRL_REG_FLAG_MAC_CLOCK_READY,
+				   IWM_CSR_GP_CNTRL_REG_FLAG_MAC_CLOCK_READY,
+				   25000);
+		if (!ret) {
+			device_printf(sc->sc_dev,
+			    "Failed to wake up the nic\n");
+			goto fail;
+		}
+
+		if (iwm_nic_lock(sc)) {
+			hw_step = iwm_read_prph(sc, IWM_WFPM_CTRL_REG);
+			hw_step |= IWM_ENABLE_WFPM;
+			iwm_write_prph(sc, IWM_WFPM_CTRL_REG, hw_step);
+			hw_step = iwm_read_prph(sc, IWM_AUX_MISC_REG);
+			hw_step = (hw_step >> IWM_HW_STEP_LOCATION_BITS) & 0xF;
+			if (hw_step == 0x3)
+				sc->sc_hw_rev = (sc->sc_hw_rev & 0xFFFFFFF3) |
+						(IWM_SILICON_C_STEP << 2);
+			iwm_nic_unlock(sc);
+		} else {
+			device_printf(sc->sc_dev, "Failed to lock the nic\n");
+			goto fail;
+		}
+	}
+
+	/* special-case 7265D, it has the same PCI IDs. */
+	if (sc->cfg == &iwm7265_cfg &&
+	    (sc->sc_hw_rev & IWM_CSR_HW_REV_TYPE_MSK) == IWM_CSR_HW_REV_TYPE_7265D) {
+		sc->cfg = &iwm7265d_cfg;
+	}
+#endif
+
+	/* Allocate DMA memory for firmware transfers. */
+	if ((error = iwx_alloc_fwmem(sc)) != 0) {
+		device_printf(dev, "could not allocate memory for firmware\n");
+		goto fail;
+	}
+
+	/* Allocate "Keep Warm" page. */
+	if ((error = iwx_alloc_kw(sc)) != 0) {
+		device_printf(dev, "could not allocate keep warm page\n");
+		goto fail;
+	}
+
+	/* We use ICT interrupts */
+	if ((error = iwx_alloc_ict(sc)) != 0) {
+		device_printf(dev, "could not allocate ICT table\n");
+		goto fail;
+	}
+
+	/* Allocate TX scheduler "rings". */
+	if ((error = iwx_alloc_sched(sc)) != 0) {
+		device_printf(dev, "could not allocate TX scheduler rings\n");
+		goto fail;
+	}
+
+	/* Allocate TX rings */
+	for (txq_i = 0; txq_i < nitems(sc->txq); txq_i++) {
+		if ((error = iwx_alloc_tx_ring(sc,
+		    &sc->txq[txq_i], txq_i)) != 0) {
+			device_printf(dev,
+			    "could not allocate TX ring %d\n",
+			    txq_i);
+			goto fail;
+		}
+	}
+
+	/* Allocate RX ring. */
+	if ((error = iwx_alloc_rx_ring(sc, &sc->rxq)) != 0) {
+		device_printf(dev, "could not allocate RX ring\n");
+		goto fail;
+	}
+
+	/* Clear pending interrupts. */
+	IWX_WRITE(sc, IWX_CSR_INT, 0xffffffff);
+
+	ic->ic_softc = sc;
+	ic->ic_name = device_get_nameunit(sc->sc_dev);
+	ic->ic_phytype = IEEE80211_T_OFDM;	/* not only, but not used */
+	ic->ic_opmode = IEEE80211_M_STA;	/* default to BSS mode */
+
+	/* Set device capabilities. */
+	ic->ic_caps =
+	    IEEE80211_C_STA |
+	    IEEE80211_C_WPA |		/* WPA/RSN */
+	    IEEE80211_C_WME |
+	    IEEE80211_C_PMGT |
+	    IEEE80211_C_SHSLOT |	/* short slot time supported */
+	    IEEE80211_C_SHPREAMBLE	/* short preamble supported */
+//	    IEEE80211_C_BGSCAN		/* capable of bg scanning */
+	    ;
+	/* Advertise full-offload scanning */
+	ic->ic_flags_ext = IEEE80211_FEXT_SCAN_OFFLOAD;
+	for (i = 0; i < nitems(sc->sc_phyctxt); i++) {
+		sc->sc_phyctxt[i].id = i;
+		sc->sc_phyctxt[i].color = 0;
+		sc->sc_phyctxt[i].ref = 0;
+		sc->sc_phyctxt[i].channel = NULL;
+	}
+
+	/* Default noise floor */
+	sc->sc_noise = -96;
+
+	/* Max RSSI */
+	sc->sc_max_rssi = IWX_MAX_DBM - IWX_MIN_DBM;
+
+#ifdef IWX_DEBUG
+	SYSCTL_ADD_INT(device_get_sysctl_ctx(dev),
+	    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)), OID_AUTO, "debug",
+	    CTLFLAG_RW, &sc->sc_debug, 0, "control debugging");
+#endif
+
+	error = iwx_read_firmware(sc);
+	if (error) {
+		goto fail;
+	} else if (sc->sc_fw.fw_fp == NULL) {
+		/*
+		 * XXX Add a solution for properly deferring firmware load
+		 *     during bootup.
+		 */
+		goto fail;
+	} else {
+		sc->sc_preinit_hook.ich_func = iwx_preinit;
+		sc->sc_preinit_hook.ich_arg = sc;
+		if (config_intrhook_establish(&sc->sc_preinit_hook) != 0) {
+			device_printf(dev,
+			    "config_intrhook_establish failed\n");
+			goto fail;
+		}
+	}
+
+	IWX_DPRINTF(sc, IWX_DEBUG_RESET | IWX_DEBUG_TRACE,
+	    "<-%s\n", __func__);
+
+	return 0;
+
+	/* Free allocated memory if something failed during attachment. */
+fail:
+	iwx_detach_local(sc, 0);
+
+	return ENXIO;
 }
 
 static int
@@ -2697,8 +3173,8 @@ iwx_detach(device_t dev)
 static device_method_t iwx_pci_methods[] = {
         /* Device interface */
 	DEVMETHOD(device_probe,         iwx_probe),
-//        DEVMETHOD(device_attach,        iwx_attach),
-//        DEVMETHOD(device_detach,        iwx_detach),
+        DEVMETHOD(device_attach,        iwx_attach),
+        DEVMETHOD(device_detach,        iwx_detach),
         DEVMETHOD(device_suspend,       iwx_suspend),
         DEVMETHOD(device_resume,        iwx_resume),
 
