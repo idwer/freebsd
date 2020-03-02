@@ -103,7 +103,7 @@
 #define IWX_CSR_GP_CNTRL            (0x024)
 
 /* 2nd byte of IWM_CSR_INT_COALESCING, not accessible via iwl_write32()! */
-#define IWM_CSR_INT_PERIODIC_REG	(0x005)
+#define IWX_CSR_INT_PERIODIC_REG	(0x005)
 
 /*
  * Hardware revision info
@@ -189,8 +189,8 @@
 #define IWX_CSR_HW_IF_CONFIG_REG_ENABLE_PME	(0x10000000)
 #define IWM_CSR_HW_IF_CONFIG_REG_PERSIST_MODE	(0x40000000) /* PERSISTENCE */
 
-#define IWM_CSR_INT_PERIODIC_DIS		(0x00) /* disable periodic int*/
-#define IWM_CSR_INT_PERIODIC_ENA		(0xFF) /* 255*32 usec ~ 8 msec*/
+#define IWX_CSR_INT_PERIODIC_DIS		(0x00) /* disable periodic int*/
+#define IWX_CSR_INT_PERIODIC_ENA		(0xFF) /* 255*32 usec ~ 8 msec*/
 
 /* interrupt flags in INTA, set by uCode or hardware (e.g. dma),
  * acknowledged (reset) by host writing "1" to flagged bits. */
@@ -198,7 +198,7 @@
 #define IWX_CSR_INT_BIT_HW_ERR	(1 << 29) /* DMA hardware error FH_INT[31] */
 #define IWX_CSR_INT_BIT_RX_PERIODIC	(1 << 28) /* Rx periodic */
 #define IWX_CSR_INT_BIT_FH_TX	(1 << 27) /* Tx DMA FH_INT[1:0] */
-#define IWM_CSR_INT_BIT_SCD	(1 << 26) /* TXQ pointer advanced */
+#define IWX_CSR_INT_BIT_SCD	(1 << 26) /* TXQ pointer advanced */
 #define IWX_CSR_INT_BIT_SW_ERR	(1 << 25) /* uCode error */
 #define IWX_CSR_INT_BIT_RF_KILL	(1 << 7)  /* HW RFKILL switch GP_CNTRL[27] toggled */
 #define IWM_CSR_INT_BIT_CT_KILL	(1 << 6)  /* Critical temp (chip too hot) rfkill */
