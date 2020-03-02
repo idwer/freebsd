@@ -2501,7 +2501,7 @@ static device_method_t iwx_pci_methods[] = {
 //        DEVMETHOD(device_attach,        iwx_attach),
 //        DEVMETHOD(device_detach,        iwx_detach),
 //        DEVMETHOD(device_suspend,       iwx_suspend),
-//        DEVMETHOD(device_resume,        iwx_resume),
+        DEVMETHOD(device_resume,        iwx_resume),
 
         DEVMETHOD_END
 };
