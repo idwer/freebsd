@@ -285,8 +285,8 @@ struct iwx_tx_ring {
 	int			cur;
 };
 
-#define IWM_RX_LEGACY_RING_COUNT	256
-#define IWM_RX_MQ_RING_COUNT		512
+#define IWX_RX_LEGACY_RING_COUNT	256
+#define IWX_RX_MQ_RING_COUNT		512
 
 #define IWM_RBUF_SIZE		4096
 
@@ -563,7 +563,7 @@ struct iwx_softc {
 	    MTX_NETWORK_LOCK, MTX_DEF);
 #define	IWX_LOCK(_sc)		mtx_lock(&(_sc)->sc_mtx)
 #define	IWX_UNLOCK(_sc)		mtx_unlock(&(_sc)->sc_mtx)
-#define IWM_LOCK_DESTROY(_sc)	mtx_destroy(&(_sc)->sc_mtx)
+#define IWX_LOCK_DESTROY(_sc)	mtx_destroy(&(_sc)->sc_mtx)
 
 static inline bool
 iwx_fw_has_api(struct iwx_softc *sc, unsigned int api)

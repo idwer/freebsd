@@ -99,7 +99,7 @@ struct iwx_alive_data {
 //                                            enum iwm_ucode_type,
 //                                            const uint8_t *, size_t);
 // static int	iwm_set_default_calib(struct iwm_softc *, const void *);
-// static void	iwm_fw_info_free(struct iwm_fw_info *);
+static void	iwx_fw_info_free(struct iwx_fw_info *);
 // static int	iwm_read_firmware(struct iwm_softc *);
 // static int	iwm_alloc_fwmem(struct iwm_softc *);
 // static int	iwm_alloc_sched(struct iwm_softc *);
@@ -107,11 +107,11 @@ struct iwx_alive_data {
 // static int	iwm_alloc_ict(struct iwm_softc *);
 // static int	iwm_alloc_rx_ring(struct iwm_softc *, struct iwm_rx_ring *);
 static void	iwx_reset_rx_ring(struct iwx_softc *, struct iwx_rx_ring *);
-// static void	iwm_free_rx_ring(struct iwm_softc *, struct iwm_rx_ring *);
+static void	iwx_free_rx_ring(struct iwx_softc *, struct iwx_rx_ring *);
 // static int	iwm_alloc_tx_ring(struct iwm_softc *, struct iwm_tx_ring *,
 //                                   int);
 static void	iwx_reset_tx_ring(struct iwx_softc *, struct iwx_tx_ring *);
-// static void	iwm_free_tx_ring(struct iwm_softc *, struct iwm_tx_ring *);
+static void	iwx_free_tx_ring(struct iwx_softc *, struct iwx_tx_ring *);
 static void	iwx_enable_interrupts(struct iwx_softc *);
 static void	iwx_restore_interrupts(struct iwx_softc *);
 static void	iwx_disable_interrupts(struct iwx_softc *);
@@ -245,7 +245,7 @@ static void	iwx_init_task(void *);
 // 		               const uint8_t [IEEE80211_ADDR_LEN],
 // 		               const uint8_t [IEEE80211_ADDR_LEN]);
 // static void	iwm_vap_delete(struct ieee80211vap *);
-// static void	iwm_xmit_queue_drain(struct iwm_softc *);
+static void	iwx_xmit_queue_drain(struct iwx_softc *);
 // static void	iwm_scan_start(struct ieee80211com *);
 // static void	iwm_scan_end(struct ieee80211com *);
 // static void	iwm_update_mcast(struct ieee80211com *);
@@ -256,6 +256,14 @@ static void	iwx_init_task(void *);
 
 static int	iwx_lar_disable = 0;
 TUNABLE_INT("hw.iwx.lar.disable", &iwx_lar_disable);
+
+static void
+iwx_fw_info_free(struct iwx_fw_info *fw)
+{
+	firmware_put(fw->fw_fp, FIRMWARE_UNLOAD);
+	fw->fw_fp = NULL;
+	memset(fw->img, 0, sizeof(fw->img));
+}
 
 static void
 iwx_reset_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
@@ -269,6 +277,43 @@ iwx_reset_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
 	 */
 	if (sc->rxq.stat)
 		memset(sc->rxq.stat, 0, sizeof(*sc->rxq.stat));
+}
+
+static void
+iwx_free_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
+{
+	int count, i;
+
+	iwx_dma_contig_free(&ring->free_desc_dma);
+	iwx_dma_contig_free(&ring->stat_dma);
+	iwx_dma_contig_free(&ring->used_desc_dma);
+
+	count = sc->cfg->mqrx_supported ? IWX_RX_MQ_RING_COUNT :
+	    IWX_RX_LEGACY_RING_COUNT;
+
+	for (i = 0; i < count; i++) {
+		struct iwx_rx_data *data = &ring->data[i];
+
+		if (data->m != NULL) {
+			bus_dmamap_sync(ring->data_dmat, data->map,
+			    BUS_DMASYNC_POSTREAD);
+			bus_dmamap_unload(ring->data_dmat, data->map);
+			m_freem(data->m);
+			data->m = NULL;
+		}
+		if (data->map != NULL) {
+			bus_dmamap_destroy(ring->data_dmat, data->map);
+			data->map = NULL;
+		}
+	}
+	if (ring->spare_map != NULL) {
+		bus_dmamap_destroy(ring->data_dmat, ring->spare_map);
+		ring->spare_map = NULL;
+	}
+	if (ring->data_dmat != NULL) {
+		bus_dma_tag_destroy(ring->data_dmat);
+		ring->data_dmat = NULL;
+	}
 }
 
 static void
@@ -297,6 +342,35 @@ iwx_reset_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring)
 
 	if (ring->qid == IWX_CMD_QUEUE && sc->cmd_hold_nic_awake)
 		iwx_pcie_clear_cmd_in_flight(sc);
+}
+
+static void
+iwx_free_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring)
+{
+	int i;
+
+	iwx_dma_contig_free(&ring->desc_dma);
+	iwx_dma_contig_free(&ring->cmd_dma);
+
+	for (i = 0; i < IWX_TX_RING_COUNT; i++) {
+		struct iwx_tx_data *data = &ring->data[i];
+
+		if (data->m != NULL) {
+			bus_dmamap_sync(ring->data_dmat, data->map,
+			    BUS_DMASYNC_POSTWRITE);
+			bus_dmamap_unload(ring->data_dmat, data->map);
+			m_freem(data->m);
+			data->m = NULL;
+		}
+		if (data->map != NULL) {
+			bus_dmamap_destroy(ring->data_dmat, data->map);
+			data->map = NULL;
+		}
+	}
+	if (ring->data_dmat != NULL) {
+		bus_dma_tag_destroy(ring->data_dmat);
+		ring->data_dmat = NULL;
+	}
 }
 
 /*
@@ -1664,6 +1738,13 @@ iwx_set_radio_cfg(const struct iwx_softc *sc, struct iwx_nvm_data *data,
 	data->valid_rx_ant = IWX_NVM_RF_CFG_RX_ANT_MSK(radio_cfg);
 }
 
+static void
+iwx_free_nvm_data(struct iwx_nvm_data *data)
+{
+	if (data != NULL)
+		free(data, M_DEVBUF);
+}
+
 static struct iwx_nvm_data *
 iwx_parse_nvm_sections(struct iwx_softc *sc, struct iwx_nvm_section *sections)
 {
@@ -2437,6 +2518,22 @@ iwx_probe(device_t dev)
 	return (ENXIO);
 }
 
+static void
+iwx_pci_detach(device_t dev)
+{
+	struct iwx_softc *sc = device_get_softc(dev);
+
+	if (sc->sc_irq != NULL) {
+		bus_teardown_intr(dev, sc->sc_irq, sc->sc_ih);
+		bus_release_resource(dev, SYS_RES_IRQ,
+		    rman_get_rid(sc->sc_irq), sc->sc_irq);
+		pci_release_msi(dev);
+        }
+	if (sc->sc_mem != NULL)
+		bus_release_resource(dev, SYS_RES_MEMORY,
+		    rman_get_rid(sc->sc_mem), sc->sc_mem);
+}
+
 static int
 iwx_is_valid_ether_addr(uint8_t *addr)
 {
@@ -2463,6 +2560,19 @@ iwx_init_task(void *arg1)
 	sc->sc_flags &= ~IWX_FLAG_BUSY;
 	wakeup(&sc->sc_flags);
 	IWX_UNLOCK(sc);
+}
+
+static void
+iwx_xmit_queue_drain(struct iwx_softc *sc)
+{
+	struct mbuf *m;
+	struct ieee80211_node *ni;
+
+	while ((m = mbufq_dequeue(&sc->sc_snd)) != NULL) {
+		ni = (struct ieee80211_node *)m->m_pkthdr.rcvif;
+		ieee80211_free_node(ni);
+		m_freem(m);
+	}
 }
 
 static int
@@ -2516,6 +2626,72 @@ iwx_suspend(device_t dev)
 	}
 
 	return (0);
+}
+
+static int
+iwx_detach_local(struct iwx_softc *sc, int do_net80211)
+{
+	struct iwx_fw_info *fw = &sc->sc_fw;
+	device_t dev = sc->sc_dev;
+	int i;
+
+	if (!sc->sc_attached)
+		return 0;
+	sc->sc_attached = 0;
+	if (do_net80211) {
+		ieee80211_draintask(&sc->sc_ic, &sc->sc_es_task);
+	}
+	iwx_stop_device(sc);
+	if (do_net80211) {
+		IWX_LOCK(sc);
+		iwx_xmit_queue_drain(sc);
+		IWX_UNLOCK(sc);
+		ieee80211_ifdetach(&sc->sc_ic);
+	}
+	callout_drain(&sc->sc_led_blink_to);
+	callout_drain(&sc->sc_watchdog_to);
+
+	iwx_phy_db_free(sc->sc_phy_db);
+	sc->sc_phy_db = NULL;
+
+	iwx_free_nvm_data(sc->nvm_data);
+
+	/* Free descriptor rings */
+	iwx_free_rx_ring(sc, &sc->rxq);
+	for (i = 0; i < nitems(sc->txq); i++)
+		iwx_free_tx_ring(sc, &sc->txq[i]);
+
+	/* Free firmware */
+	if (fw->fw_fp != NULL)
+		iwx_fw_info_free(fw);
+
+	/* Free scheduler */
+	iwx_dma_contig_free(&sc->sched_dma);
+	iwx_dma_contig_free(&sc->ict_dma);
+	iwx_dma_contig_free(&sc->kw_dma);
+	iwx_dma_contig_free(&sc->fw_dma);
+
+	iwx_free_fw_paging(sc);
+
+	/* Finished with the hardware - detach things */
+	iwx_pci_detach(dev);
+
+	if (sc->sc_notif_wait != NULL) {
+		iwx_notification_wait_free(sc->sc_notif_wait);
+		sc->sc_notif_wait = NULL;
+	}
+
+	IWX_LOCK_DESTROY(sc);
+
+	return (0);
+}
+
+static int
+iwx_detach(device_t dev)
+{
+	struct iwx_softc *sc = device_get_softc(dev);
+
+	return (iwx_detach_local(sc, 1));
 }
 
 static device_method_t iwx_pci_methods[] = {
