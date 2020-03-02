@@ -106,7 +106,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-struct iwm_rx_radiotap_header {
+struct iwx_rx_radiotap_header {
 	struct ieee80211_radiotap_header wr_ihdr;
 	uint64_t	wr_tsft;
 	uint8_t		wr_flags;
@@ -117,7 +117,7 @@ struct iwm_rx_radiotap_header {
 	int8_t		wr_dbm_antnoise;
 } __packed __aligned(8);
 
-#define IWM_RX_RADIOTAP_PRESENT						\
+#define IWX_RX_RADIOTAP_PRESENT						\
 	((1 << IEEE80211_RADIOTAP_TSFT) |				\
 	 (1 << IEEE80211_RADIOTAP_FLAGS) |				\
 	 (1 << IEEE80211_RADIOTAP_RATE) |				\
@@ -125,7 +125,7 @@ struct iwm_rx_radiotap_header {
 	 (1 << IEEE80211_RADIOTAP_DBM_ANTSIGNAL) |			\
 	 (1 << IEEE80211_RADIOTAP_DBM_ANTNOISE))
 
-struct iwm_tx_radiotap_header {
+struct iwx_tx_radiotap_header {
 	struct ieee80211_radiotap_header wt_ihdr;
 	uint8_t		wt_flags;
 	uint8_t		wt_rate;
@@ -133,7 +133,7 @@ struct iwm_tx_radiotap_header {
 	uint16_t	wt_chan_flags;
 } __packed;
 
-#define IWM_TX_RADIOTAP_PRESENT						\
+#define IWX_TX_RADIOTAP_PRESENT						\
 	((1 << IEEE80211_RADIOTAP_FLAGS) |				\
 	 (1 << IEEE80211_RADIOTAP_RATE) |				\
 	 (1 << IEEE80211_RADIOTAP_CHANNEL))
@@ -154,8 +154,8 @@ struct iwm_tx_radiotap_header {
 enum iwx_ucode_type {
 	IWX_UCODE_REGULAR,
 	IWX_UCODE_INIT,
-	IWM_UCODE_WOWLAN,
-	IWM_UCODE_REGULAR_USNIFFER,
+	IWX_UCODE_WOWLAN,
+	IWX_UCODE_REGULAR_USNIFFER,
 	IWX_UCODE_TYPE_MAX
 };
 
@@ -261,8 +261,8 @@ struct iwx_fw_paging {
 };
 
 #define IWX_TX_RING_COUNT	256
-#define IWM_TX_RING_LOMARK	192
-#define IWM_TX_RING_HIMARK	224
+#define IWX_TX_RING_LOMARK	192
+#define IWX_TX_RING_HIMARK	224
 
 struct iwx_tx_data {
 	bus_dmamap_t		map;
@@ -288,9 +288,9 @@ struct iwx_tx_ring {
 #define IWX_RX_LEGACY_RING_COUNT	256
 #define IWX_RX_MQ_RING_COUNT		512
 
-#define IWM_RBUF_SIZE		4096
+#define IWX_RBUF_SIZE		4096
 
-#define IWM_MAX_SCATTER		20
+#define IWX_MAX_SCATTER		20
 
 struct iwx_rx_data {
 	struct mbuf	*m;
@@ -312,7 +312,7 @@ struct iwx_rx_ring {
 
 #define IWM_CMD_RESP_MAX PAGE_SIZE
 
-#define IWM_TE_SESSION_PROTECTION_MAX_TIME_MS 500
+#define IWX_TE_SESSION_PROTECTION_MAX_TIME_MS 500
 #define IWM_TE_SESSION_PROTECTION_MIN_TIME_MS 400
 
 /*
@@ -394,9 +394,9 @@ struct iwx_node {
 #define IWX_STATION_ID 0
 #define IWX_AUX_STA_ID 1
 
-#define	IWM_DEFAULT_MACID	0
-#define	IWM_DEFAULT_COLOR	0
-#define	IWM_DEFAULT_TSFID	0
+#define	IWX_DEFAULT_MACID	0
+#define	IWX_DEFAULT_COLOR	0
+#define	IWX_DEFAULT_TSFID	0
 
 #define IWX_ICT_SIZE		4096
 #define IWX_ICT_COUNT		(IWX_ICT_SIZE / sizeof (uint32_t))
@@ -501,7 +501,7 @@ struct iwx_softc {
 
 	struct task		sc_es_task;
 
-	struct iwm_rx_phy_info	sc_last_phy_info;
+	struct iwx_rx_phy_info	sc_last_phy_info;
 	int			sc_ampdu_ref;
 
 	struct iwx_int_sta	sc_aux_sta;
@@ -509,11 +509,11 @@ struct iwx_softc {
 	/* phy contexts.  we only use the first one */
 	struct iwx_phy_ctxt	sc_phyctxt[IWX_NUM_PHY_CTX];
 
-	struct iwm_notif_statistics_v10 sc_stats;
+	struct iwx_notif_statistics_v10 sc_stats;
 	int			sc_noise;
 
-	struct iwm_rx_radiotap_header sc_rxtap;
-	struct iwm_tx_radiotap_header sc_txtap;
+	struct iwx_rx_radiotap_header sc_rxtap;
+	struct iwx_tx_radiotap_header sc_txtap;
 
 	int			sc_max_rssi;
 

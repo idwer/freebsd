@@ -144,15 +144,15 @@ __FBSDID("$FreeBSD$");
 #include <dev/iwx/if_iwx_util.h>
 #include <dev/iwx/if_iwx_power.h>
 
-static int iwm_power_scheme = IWM_POWER_SCHEME_BPS;
+static int iwx_power_scheme = IWX_POWER_SCHEME_BPS;
 
-TUNABLE_INT("hw.iwm.power_scheme", &iwm_power_scheme);
+TUNABLE_INT("hw.iwx.power_scheme", &iwx_power_scheme);
 
 /*
  * BEGIN mvm/power.c
  */
 
-#define IWM_POWER_KEEP_ALIVE_PERIOD_SEC    25
+#define IWX_POWER_KEEP_ALIVE_PERIOD_SEC    25
 
 static int
 iwx_beacon_filter_send_cmd(struct iwx_softc *sc,
@@ -201,41 +201,40 @@ iwx_beacon_filter_send_cmd(struct iwx_softc *sc,
 	return ret;
 }
 
-#if 0
 static void
-iwm_beacon_filter_set_cqm_params(struct iwm_softc *sc,
-	struct iwm_vap *ivp, struct iwm_beacon_filter_cmd *cmd)
+iwx_beacon_filter_set_cqm_params(struct iwx_softc *sc,
+	struct iwx_vap *ivp, struct iwx_beacon_filter_cmd *cmd)
 {
 	cmd->ba_enable_beacon_abort = htole32(sc->sc_bf.ba_enabled);
 }
 
 static void
-iwm_power_log(struct iwm_softc *sc, struct iwm_mac_power_cmd *cmd)
+iwx_power_log(struct iwx_softc *sc, struct iwx_mac_power_cmd *cmd)
 {
-	IWM_DPRINTF(sc, IWM_DEBUG_PWRSAVE | IWM_DEBUG_CMD,
+	IWX_DPRINTF(sc, IWX_DEBUG_PWRSAVE | IWX_DEBUG_CMD,
 	    "Sending power table command on mac id 0x%X for "
 	    "power level %d, flags = 0x%X\n",
-	    cmd->id_and_color, iwm_power_scheme, le16toh(cmd->flags));
-	IWM_DPRINTF(sc, IWM_DEBUG_PWRSAVE | IWM_DEBUG_CMD,
+	    cmd->id_and_color, iwx_power_scheme, le16toh(cmd->flags));
+	IWX_DPRINTF(sc, IWX_DEBUG_PWRSAVE | IWX_DEBUG_CMD,
 	    "Keep alive = %u sec\n", le16toh(cmd->keep_alive_seconds));
 
-	if (!(cmd->flags & htole16(IWM_POWER_FLAGS_POWER_MANAGEMENT_ENA_MSK))) {
-		IWM_DPRINTF(sc, IWM_DEBUG_PWRSAVE | IWM_DEBUG_CMD,
+	if (!(cmd->flags & htole16(IWX_POWER_FLAGS_POWER_MANAGEMENT_ENA_MSK))) {
+		IWX_DPRINTF(sc, IWX_DEBUG_PWRSAVE | IWX_DEBUG_CMD,
 		    "Disable power management\n");
 		return;
 	}
 
-	IWM_DPRINTF(sc, IWM_DEBUG_PWRSAVE | IWM_DEBUG_CMD,
+	IWX_DPRINTF(sc, IWX_DEBUG_PWRSAVE | IWX_DEBUG_CMD,
 	    "Rx timeout = %u usec\n", le32toh(cmd->rx_data_timeout));
-	IWM_DPRINTF(sc, IWM_DEBUG_PWRSAVE | IWM_DEBUG_CMD,
+	IWX_DPRINTF(sc, IWX_DEBUG_PWRSAVE | IWX_DEBUG_CMD,
 	    "Tx timeout = %u usec\n", le32toh(cmd->tx_data_timeout));
-	if (cmd->flags & htole16(IWM_POWER_FLAGS_SKIP_OVER_DTIM_MSK))
-		IWM_DPRINTF(sc, IWM_DEBUG_PWRSAVE | IWM_DEBUG_CMD,
+	if (cmd->flags & htole16(IWX_POWER_FLAGS_SKIP_OVER_DTIM_MSK))
+		IWX_DPRINTF(sc, IWX_DEBUG_PWRSAVE | IWX_DEBUG_CMD,
 		    "DTIM periods to skip = %u\n", cmd->skip_dtim_periods);
 }
 
 static boolean_t
-iwm_power_is_radar(struct iwm_softc *sc)
+iwx_power_is_radar(struct iwx_softc *sc)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ieee80211_channel *chan;
@@ -251,8 +250,8 @@ iwm_power_is_radar(struct iwm_softc *sc)
 }
 
 static void
-iwm_power_config_skip_dtim(struct iwm_softc *sc,
-	struct iwm_mac_power_cmd *cmd)
+iwx_power_config_skip_dtim(struct iwx_softc *sc,
+	struct iwx_mac_power_cmd *cmd)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ieee80211vap *vap = TAILQ_FIRST(&ic->ic_vaps);
@@ -261,9 +260,9 @@ iwm_power_config_skip_dtim(struct iwm_softc *sc,
 
 	/* disable, in case we're supposed to override */
 	cmd->skip_dtim_periods = 0;
-	cmd->flags &= ~htole16(IWM_POWER_FLAGS_SKIP_OVER_DTIM_MSK);
+	cmd->flags &= ~htole16(IWX_POWER_FLAGS_SKIP_OVER_DTIM_MSK);
 
-        if (iwm_power_is_radar(sc))
+        if (iwx_power_is_radar(sc))
                 return;
 
 	if (dtimper >= 10)
@@ -271,18 +270,18 @@ iwm_power_config_skip_dtim(struct iwm_softc *sc,
 
 	/* TODO: check that multicast wake lock is off */
 
-	if (iwm_power_scheme != IWM_POWER_SCHEME_LP)
+	if (iwx_power_scheme != IWX_POWER_SCHEME_LP)
 		return;
 	skip = 2;
 
 	/* the firmware really expects "look at every X DTIMs", so add 1 */
 	cmd->skip_dtim_periods = 1 + skip;
-	cmd->flags |= htole16(IWM_POWER_FLAGS_SKIP_OVER_DTIM_MSK);
+	cmd->flags |= htole16(IWX_POWER_FLAGS_SKIP_OVER_DTIM_MSK);
 }
 
 static void
-iwm_power_build_cmd(struct iwm_softc *sc, struct iwm_vap *ivp,
-	struct iwm_mac_power_cmd *cmd)
+iwx_power_build_cmd(struct iwx_softc *sc, struct iwx_vap *ivp,
+	struct iwx_mac_power_cmd *cmd)
 {
 	struct ieee80211vap *vap = &ivp->iv_vap;
 	struct ieee80211_node *ni = vap->iv_bss;
@@ -290,7 +289,7 @@ iwm_power_build_cmd(struct iwm_softc *sc, struct iwm_vap *ivp,
 	int keep_alive;
 	boolean_t bss_conf_ps = FALSE;
 
-	cmd->id_and_color = htole32(IWM_FW_CMD_ID_AND_COLOR(ivp->id,
+	cmd->id_and_color = htole32(IWX_FW_CMD_ID_AND_COLOR(ivp->id,
 	    ivp->color));
 	dtimper = vap->iv_dtim_period ?: 1;
 
@@ -302,52 +301,52 @@ iwm_power_build_cmd(struct iwm_softc *sc, struct iwm_vap *ivp,
 	 */
 	dtimper_msec = dtimper * ni->ni_intval;
 	keep_alive
-	    = imax(3 * dtimper_msec, 1000 * IWM_POWER_KEEP_ALIVE_PERIOD_SEC);
+	    = imax(3 * dtimper_msec, 1000 * IWX_POWER_KEEP_ALIVE_PERIOD_SEC);
 	keep_alive = roundup(keep_alive, 1000) / 1000;
 	cmd->keep_alive_seconds = htole16(keep_alive);
 
 	if (sc->sc_ps_disabled)
 		return;
 
-	cmd->flags |= htole16(IWM_POWER_FLAGS_POWER_SAVE_ENA_MSK);
+	cmd->flags |= htole16(IWX_POWER_FLAGS_POWER_SAVE_ENA_MSK);
 
-	if (IWM_NODE(ni)->in_assoc &&
+	if (IWX_NODE(ni)->in_assoc &&
 	    (vap->iv_flags & IEEE80211_F_PMGTON) != 0) {
 		bss_conf_ps = TRUE;
 	}
 	if (!bss_conf_ps)
 		return;
 
-	cmd->flags |= htole16(IWM_POWER_FLAGS_POWER_MANAGEMENT_ENA_MSK);
+	cmd->flags |= htole16(IWX_POWER_FLAGS_POWER_MANAGEMENT_ENA_MSK);
 
-	iwm_power_config_skip_dtim(sc, cmd);
+	iwx_power_config_skip_dtim(sc, cmd);
 
 	cmd->rx_data_timeout =
-		htole32(IWM_DEFAULT_PS_RX_DATA_TIMEOUT);
+		htole32(IWX_DEFAULT_PS_RX_DATA_TIMEOUT);
 	cmd->tx_data_timeout =
-		htole32(IWM_DEFAULT_PS_TX_DATA_TIMEOUT);
+		htole32(IWX_DEFAULT_PS_TX_DATA_TIMEOUT);
 }
 
 static int
-iwm_power_send_cmd(struct iwm_softc *sc, struct iwm_vap *ivp)
+iwx_power_send_cmd(struct iwx_softc *sc, struct iwx_vap *ivp)
 {
-	struct iwm_mac_power_cmd cmd = {};
+	struct iwx_mac_power_cmd cmd = {};
 
-	iwm_power_build_cmd(sc, ivp, &cmd);
-	iwm_power_log(sc, &cmd);
+	iwx_power_build_cmd(sc, ivp, &cmd);
+	iwx_power_log(sc, &cmd);
 
-	return iwm_send_cmd_pdu(sc, IWM_MAC_PM_POWER_TABLE, 0,
+	return iwx_send_cmd_pdu(sc, IWX_MAC_PM_POWER_TABLE, 0,
 	    sizeof(cmd), &cmd);
 }
 
 static int
-_iwm_enable_beacon_filter(struct iwm_softc *sc, struct iwm_vap *ivp,
-	struct iwm_beacon_filter_cmd *cmd)
+_iwx_enable_beacon_filter(struct iwx_softc *sc, struct iwx_vap *ivp,
+	struct iwx_beacon_filter_cmd *cmd)
 {
 	int ret;
 
-	iwm_beacon_filter_set_cqm_params(sc, ivp, cmd);
-	ret = iwm_beacon_filter_send_cmd(sc, cmd);
+	iwx_beacon_filter_set_cqm_params(sc, ivp, cmd);
+	ret = iwx_beacon_filter_send_cmd(sc, cmd);
 
 	if (!ret)
 		sc->sc_bf.bf_enabled = 1;
@@ -356,16 +355,15 @@ _iwm_enable_beacon_filter(struct iwm_softc *sc, struct iwm_vap *ivp,
 }
 
 int
-iwm_enable_beacon_filter(struct iwm_softc *sc, struct iwm_vap *ivp)
+iwx_enable_beacon_filter(struct iwx_softc *sc, struct iwx_vap *ivp)
 {
-	struct iwm_beacon_filter_cmd cmd = {
-		IWM_BF_CMD_CONFIG_DEFAULTS,
+	struct iwx_beacon_filter_cmd cmd = {
+		IWX_BF_CMD_CONFIG_DEFAULTS,
 		.bf_enable_beacon_filter = htole32(1),
 	};
 
-	return _iwm_enable_beacon_filter(sc, ivp, &cmd);
+	return _iwx_enable_beacon_filter(sc, ivp, &cmd);
 }
-#endif
 
 int
 iwx_disable_beacon_filter(struct iwx_softc *sc)
@@ -380,19 +378,18 @@ iwx_disable_beacon_filter(struct iwx_softc *sc)
 	return ret;
 }
 
-#if 0
 static int
-iwm_power_set_ps(struct iwm_softc *sc)
+iwx_power_set_ps(struct iwx_softc *sc)
 {
 	struct ieee80211vap *vap;
 	boolean_t disable_ps;
 	int ret;
 
 	/* disable PS if CAM */
-	disable_ps = (iwm_power_scheme == IWM_POWER_SCHEME_CAM);
+	disable_ps = (iwx_power_scheme == IWX_POWER_SCHEME_CAM);
 	/* ...or if any of the vifs require PS to be off */
 	TAILQ_FOREACH(vap, &sc->sc_ic.ic_vaps, iv_next) {
-		struct iwm_vap *ivp = IWM_VAP(vap);
+		struct iwx_vap *ivp = IWX_VAP(vap);
 		if (ivp->phy_ctxt != NULL && ivp->ps_disabled)
 			disable_ps = TRUE;
 	}
@@ -402,7 +399,7 @@ iwm_power_set_ps(struct iwm_softc *sc)
 		boolean_t old_ps_disabled = sc->sc_ps_disabled;
 
 		sc->sc_ps_disabled = disable_ps;
-		ret = iwm_power_update_device(sc);
+		ret = iwx_power_update_device(sc);
 		if (ret) {
 			sc->sc_ps_disabled = old_ps_disabled;
 			return ret;
@@ -413,10 +410,10 @@ iwm_power_set_ps(struct iwm_softc *sc)
 }
 
 static int
-iwm_power_set_ba(struct iwm_softc *sc, struct iwm_vap *ivp)
+iwx_power_set_ba(struct iwx_softc *sc, struct iwx_vap *ivp)
 {
-	struct iwm_beacon_filter_cmd cmd = {
-		IWM_BF_CMD_CONFIG_DEFAULTS,
+	struct iwx_beacon_filter_cmd cmd = {
+		IWX_BF_CMD_CONFIG_DEFAULTS,
 		.bf_enable_beacon_filter = htole32(1),
 	};
 	struct ieee80211vap *vap = &ivp->iv_vap;
@@ -426,70 +423,69 @@ iwm_power_set_ba(struct iwm_softc *sc, struct iwm_vap *ivp)
 	if (!sc->sc_bf.bf_enabled)
 		return 0;
 
-	if (ni != NULL && IWM_NODE(ni)->in_assoc &&
+	if (ni != NULL && IWX_NODE(ni)->in_assoc &&
 	    (vap->iv_flags & IEEE80211_F_PMGTON) != 0) {
 		bss_conf_ps = TRUE;
 	}
 	sc->sc_bf.ba_enabled = !sc->sc_ps_disabled && bss_conf_ps;
 
-	return _iwm_enable_beacon_filter(sc, ivp, &cmd);
+	return _iwx_enable_beacon_filter(sc, ivp, &cmd);
 }
 
 int
-iwm_power_update_ps(struct iwm_softc *sc)
+iwx_power_update_ps(struct iwx_softc *sc)
 {
 	struct ieee80211vap *vap = TAILQ_FIRST(&sc->sc_ic.ic_vaps);
 	int ret;
 
-	ret = iwm_power_set_ps(sc);
+	ret = iwx_power_set_ps(sc);
 	if (ret)
 		return ret;
 
 	if (vap != NULL)
-		return iwm_power_set_ba(sc, IWM_VAP(vap));
+		return iwx_power_set_ba(sc, IWX_VAP(vap));
 
 	return 0;
 }
 
 int
-iwm_power_update_mac(struct iwm_softc *sc)
+iwx_power_update_mac(struct iwx_softc *sc)
 {
 	struct ieee80211vap *vap = TAILQ_FIRST(&sc->sc_ic.ic_vaps);
 	int ret;
 
-	ret = iwm_power_set_ps(sc);
+	ret = iwx_power_set_ps(sc);
 	if (ret)
 		return ret;
 
 	if (vap != NULL) {
-		ret = iwm_power_send_cmd(sc, IWM_VAP(vap));
+		ret = iwx_power_send_cmd(sc, IWX_VAP(vap));
 		if (ret)
 			return ret;
 	}
 
 	if (vap != NULL)
-		return iwm_power_set_ba(sc, IWM_VAP(vap));
+		return iwx_power_set_ba(sc, IWX_VAP(vap));
 
 	return 0;
 }
 
 int
-iwm_power_update_device(struct iwm_softc *sc)
+iwx_power_update_device(struct iwx_softc *sc)
 {
-	struct iwm_device_power_cmd cmd = {
+	struct iwx_device_power_cmd cmd = {
 		.flags = 0,
 	};
 
-	if (iwm_power_scheme == IWM_POWER_SCHEME_CAM)
+	if (iwx_power_scheme == IWX_POWER_SCHEME_CAM)
 		sc->sc_ps_disabled = TRUE;
 
 	if (!sc->sc_ps_disabled)
-		cmd.flags |= htole16(IWM_DEVICE_POWER_FLAGS_POWER_SAVE_ENA_MSK);
+		cmd.flags |= htole16(IWX_DEVICE_POWER_FLAGS_POWER_SAVE_ENA_MSK);
 
-	IWM_DPRINTF(sc, IWM_DEBUG_PWRSAVE | IWM_DEBUG_CMD,
+	IWX_DPRINTF(sc, IWX_DEBUG_PWRSAVE | IWX_DEBUG_CMD,
 	    "Sending device power command with flags = 0x%X\n", cmd.flags);
 
-	return iwm_send_cmd_pdu(sc,
-	    IWM_POWER_TABLE_CMD, 0, sizeof(cmd), &cmd);
+	return iwx_send_cmd_pdu(sc,
+	    IWX_POWER_TABLE_CMD, 0, sizeof(cmd), &cmd);
 }
-#endif

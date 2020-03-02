@@ -210,16 +210,16 @@
  */
 extern	int iwx_sta_send_to_fw(struct iwx_softc *sc, struct iwx_node *in,
 				   boolean_t update);
-extern	int iwm_add_sta(struct iwx_softc *sc, struct iwx_node *in);
-extern	int iwm_update_sta(struct iwx_softc *sc, struct iwx_node *in);
-extern	int iwm_rm_sta(struct iwx_softc *sc, struct ieee80211vap *vap,
+extern	int iwx_add_sta(struct iwx_softc *sc, struct iwx_node *in);
+extern	int iwx_update_sta(struct iwx_softc *sc, struct iwx_node *in);
+extern	int iwx_rm_sta(struct iwx_softc *sc, struct ieee80211vap *vap,
 			   boolean_t is_assoc);
-extern	int iwm_rm_sta_id(struct iwx_softc *sc, struct ieee80211vap *vap);
+extern	int iwx_rm_sta_id(struct iwx_softc *sc, struct ieee80211vap *vap);
 
 extern	int iwx_add_aux_sta(struct iwx_softc *sc);
 extern	void iwm_del_aux_sta(struct iwx_softc *sc);
 
-extern	int iwm_drain_sta(struct iwx_softc *sc, struct iwx_vap *ivp,
+extern	int iwx_drain_sta(struct iwx_softc *sc, struct iwx_vap *ivp,
 			      boolean_t drain);
 
 #endif /* __IF_IWM_STA_H__ */

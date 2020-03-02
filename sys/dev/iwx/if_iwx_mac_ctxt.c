@@ -170,10 +170,9 @@ const uint8_t iwx_ac_to_tx_fifo[] = {
 	IWM_TX_FIFO_VO,
 };
 
-#if 0
 static void
-iwm_ack_rates(struct iwm_softc *sc, int is2ghz,
-	int *cck_rates, int *ofdm_rates, struct iwm_node *in)
+iwx_ack_rates(struct iwx_softc *sc, int is2ghz,
+	int *cck_rates, int *ofdm_rates, struct iwx_node *in)
 {
 	int lowest_present_ofdm = 100;
 	int lowest_present_cck = 100;
@@ -183,18 +182,18 @@ iwm_ack_rates(struct iwm_softc *sc, int is2ghz,
 	struct ieee80211_rateset *rs = &in->in_ni.ni_rates;
 
 	if (is2ghz) {
-		for (i = IWM_FIRST_CCK_RATE; i <= IWM_LAST_CCK_RATE; i++) {
-			if ((iwm_ridx2rate(rs, i) & IEEE80211_RATE_BASIC) == 0)
+		for (i = IWX_FIRST_CCK_RATE; i <= IWX_LAST_CCK_RATE; i++) {
+			if ((iwx_ridx2rate(rs, i) & IEEE80211_RATE_BASIC) == 0)
 				continue;
 			cck |= (1 << i);
 			if (lowest_present_cck > i)
 				lowest_present_cck = i;
 		}
 	}
-	for (i = IWM_FIRST_OFDM_RATE; i <= IWM_LAST_NON_HT_RATE; i++) {
-		if ((iwm_ridx2rate(rs, i) & IEEE80211_RATE_BASIC) == 0)
+	for (i = IWX_FIRST_OFDM_RATE; i <= IWX_LAST_NON_HT_RATE; i++) {
+		if ((iwx_ridx2rate(rs, i) & IEEE80211_RATE_BASIC) == 0)
 			continue;
-		ofdm |= (1 << (i - IWM_FIRST_OFDM_RATE));
+		ofdm |= (1 << (i - IWX_FIRST_OFDM_RATE));
 		if (lowest_present_ofdm > i)
 			lowest_present_ofdm = i;
 	}
@@ -222,12 +221,12 @@ iwm_ack_rates(struct iwm_softc *sc, int is2ghz,
 	 * lower than all of the basic rates to these bitmaps.
 	 */
 
-	if (IWM_RATE_24M_INDEX < lowest_present_ofdm)
-		ofdm |= IWM_RATE_BIT_MSK(24) >> IWM_FIRST_OFDM_RATE;
-	if (IWM_RATE_12M_INDEX < lowest_present_ofdm)
-		ofdm |= IWM_RATE_BIT_MSK(12) >> IWM_FIRST_OFDM_RATE;
+	if (IWX_RATE_24M_INDEX < lowest_present_ofdm)
+		ofdm |= IWX_RATE_BIT_MSK(24) >> IWX_FIRST_OFDM_RATE;
+	if (IWX_RATE_12M_INDEX < lowest_present_ofdm)
+		ofdm |= IWX_RATE_BIT_MSK(12) >> IWX_FIRST_OFDM_RATE;
 	/* 6M already there or needed so always add */
-	ofdm |= IWM_RATE_BIT_MSK(6) >> IWM_FIRST_OFDM_RATE;
+	ofdm |= IWX_RATE_BIT_MSK(6) >> IWX_FIRST_OFDM_RATE;
 
 	/*
 	 * CCK is a bit more complex with DSSS vs. HR/DSSS vs. ERP.
@@ -242,27 +241,27 @@ iwm_ack_rates(struct iwm_softc *sc, int is2ghz,
 	 * As a consequence, it's not as complicated as it sounds, just add
 	 * any lower rates to the ACK rate bitmap.
 	 */
-	if (IWM_RATE_11M_INDEX < lowest_present_cck)
-		cck |= IWM_RATE_BIT_MSK(11) >> IWM_FIRST_CCK_RATE;
-	if (IWM_RATE_5M_INDEX < lowest_present_cck)
-		cck |= IWM_RATE_BIT_MSK(5) >> IWM_FIRST_CCK_RATE;
-	if (IWM_RATE_2M_INDEX < lowest_present_cck)
-		cck |= IWM_RATE_BIT_MSK(2) >> IWM_FIRST_CCK_RATE;
+	if (IWX_RATE_11M_INDEX < lowest_present_cck)
+		cck |= IWX_RATE_BIT_MSK(11) >> IWX_FIRST_CCK_RATE;
+	if (IWX_RATE_5M_INDEX < lowest_present_cck)
+		cck |= IWX_RATE_BIT_MSK(5) >> IWX_FIRST_CCK_RATE;
+	if (IWX_RATE_2M_INDEX < lowest_present_cck)
+		cck |= IWX_RATE_BIT_MSK(2) >> IWX_FIRST_CCK_RATE;
 	/* 1M already there or needed so always add */
-	cck |= IWM_RATE_BIT_MSK(1) >> IWM_FIRST_CCK_RATE;
+	cck |= IWX_RATE_BIT_MSK(1) >> IWX_FIRST_CCK_RATE;
 
 	*cck_rates = cck;
 	*ofdm_rates = ofdm;
 }
 
 static void
-iwm_mac_ctxt_cmd_common(struct iwm_softc *sc, struct iwm_node *in,
-	struct iwm_mac_ctx_cmd *cmd, uint32_t action)
+iwx_mac_ctxt_cmd_common(struct iwx_softc *sc, struct iwx_node *in,
+	struct iwx_mac_ctx_cmd *cmd, uint32_t action)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ieee80211vap *vap = TAILQ_FIRST(&ic->ic_vaps);
 	struct ieee80211_node *ni = vap->iv_bss;
-	struct iwm_vap *ivp = IWM_VAP(vap);
+	struct iwx_vap *ivp = IWX_VAP(vap);
 	int cck_ack_rates, ofdm_ack_rates;
 	int i;
 	int is2ghz;
@@ -274,11 +273,11 @@ iwm_mac_ctxt_cmd_common(struct iwm_softc *sc, struct iwm_node *in,
 	 * These are both functions of the vap, not of the node.
 	 * So, for now, hard-code both to 0 (default).
 	 */
-	cmd->id_and_color = htole32(IWM_FW_CMD_ID_AND_COLOR(ivp->id,
+	cmd->id_and_color = htole32(IWX_FW_CMD_ID_AND_COLOR(ivp->id,
 	    ivp->color));
 	cmd->action = htole32(action);
 
-	cmd->mac_type = htole32(IWM_FW_MAC_TYPE_BSS_STA);
+	cmd->mac_type = htole32(IWX_FW_MAC_TYPE_BSS_STA);
 
 	/*
 	 * The TSF ID is one of four TSF tracking resources in the firmware.
@@ -289,7 +288,7 @@ iwm_mac_ctxt_cmd_common(struct iwm_softc *sc, struct iwm_node *in,
 	 *
 	 * It's per-vap, not per-node.
 	 */
-	cmd->tsf_id = htole32(IWM_DEFAULT_TSFID);
+	cmd->tsf_id = htole32(IWX_DEFAULT_TSFID);
 
 	IEEE80211_ADDR_COPY(cmd->node_addr, vap->iv_myaddr);
 
@@ -328,16 +327,16 @@ iwm_mac_ctxt_cmd_common(struct iwm_softc *sc, struct iwm_node *in,
 	} else {
 		is2ghz = 1;
 	}
-	iwm_ack_rates(sc, is2ghz, &cck_ack_rates, &ofdm_ack_rates, in);
+	iwx_ack_rates(sc, is2ghz, &cck_ack_rates, &ofdm_ack_rates, in);
 	cmd->cck_rates = htole32(cck_ack_rates);
 	cmd->ofdm_rates = htole32(ofdm_ack_rates);
 
 	cmd->cck_short_preamble
 	    = htole32((ic->ic_flags & IEEE80211_F_SHPREAMBLE)
-	      ? IWM_MAC_FLG_SHORT_PREAMBLE : 0);
+	      ? IWX_MAC_FLG_SHORT_PREAMBLE : 0);
 	cmd->short_slot
 	    = htole32((ic->ic_flags & IEEE80211_F_SHSLOT)
-	      ? IWM_MAC_FLG_SHORT_SLOT : 0);
+	      ? IWX_MAC_FLG_SHORT_SLOT : 0);
 
 	/*
 	 * XXX TODO: if we're doing QOS..
@@ -345,7 +344,7 @@ iwm_mac_ctxt_cmd_common(struct iwm_softc *sc, struct iwm_node *in,
 	 */
 
 	for (i = 0; i < WME_NUM_AC; i++) {
-		uint8_t txf = iwm_ac_to_tx_fifo[i];
+		uint8_t txf = iwx_ac_to_tx_fifo[i];
 
 		cmd->ac[txf].cw_min = htole16(ivp->queue_params[i].cw_min);
 		cmd->ac[txf].cw_max = htole16(ivp->queue_params[i].cw_max);
@@ -356,18 +355,18 @@ iwm_mac_ctxt_cmd_common(struct iwm_softc *sc, struct iwm_node *in,
 	}
 
 	if (ivp->have_wme)
-		cmd->qos_flags |= htole32(IWM_MAC_QOS_FLG_UPDATE_EDCA);
+		cmd->qos_flags |= htole32(IWX_MAC_QOS_FLG_UPDATE_EDCA);
 
 	if (ic->ic_flags & IEEE80211_F_USEPROT)
-		cmd->protection_flags |= htole32(IWM_MAC_PROT_FLG_TGG_PROTECT);
+		cmd->protection_flags |= htole32(IWX_MAC_PROT_FLG_TGG_PROTECT);
 
-	cmd->filter_flags = htole32(IWM_MAC_FILTER_ACCEPT_GRP);
+	cmd->filter_flags = htole32(IWX_MAC_FILTER_ACCEPT_GRP);
 }
 
 static int
-iwm_mac_ctxt_send_cmd(struct iwm_softc *sc, struct iwm_mac_ctx_cmd *cmd)
+iwx_mac_ctxt_send_cmd(struct iwx_softc *sc, struct iwx_mac_ctx_cmd *cmd)
 {
-	int ret = iwm_send_cmd_pdu(sc, IWM_MAC_CONTEXT_CMD, IWM_CMD_SYNC,
+	int ret = iwx_send_cmd_pdu(sc, IWX_MAC_CONTEXT_CMD, IWX_CMD_SYNC,
 				       sizeof(*cmd), cmd);
 	if (ret)
 		device_printf(sc->sc_dev,
@@ -380,8 +379,8 @@ iwm_mac_ctxt_send_cmd(struct iwm_softc *sc, struct iwm_mac_ctx_cmd *cmd)
  * Fill the specific data for mac context of type station or p2p client
  */
 static void
-iwm_mac_ctxt_cmd_fill_sta(struct iwm_softc *sc, struct iwm_node *in,
-	struct iwm_mac_data_sta *ctxt_sta, int force_assoc_off)
+iwx_mac_ctxt_cmd_fill_sta(struct iwx_softc *sc, struct iwx_node *in,
+	struct iwx_mac_data_sta *ctxt_sta, int force_assoc_off)
 {
 	struct ieee80211_node *ni = &in->in_ni;
 	unsigned dtim_period, dtim_count;
@@ -391,11 +390,11 @@ iwm_mac_ctxt_cmd_fill_sta(struct iwm_softc *sc, struct iwm_node *in,
 	/* will this work? */
 	dtim_period = vap->iv_dtim_period;
 	dtim_count = vap->iv_dtim_count;
-	IWM_DPRINTF(sc, IWM_DEBUG_RESET | IWM_DEBUG_BEACON | IWM_DEBUG_CMD,
+	IWX_DPRINTF(sc, IWX_DEBUG_RESET | IWX_DEBUG_BEACON | IWX_DEBUG_CMD,
 	    "%s: force_assoc_off=%d\n", __func__, force_assoc_off);
-	IWM_DPRINTF(sc, IWM_DEBUG_RESET | IWM_DEBUG_BEACON | IWM_DEBUG_CMD,
+	IWX_DPRINTF(sc, IWX_DEBUG_RESET | IWX_DEBUG_BEACON | IWX_DEBUG_CMD,
 	    "DTIM: period=%d count=%d\n", dtim_period, dtim_count);
-	IWM_DPRINTF(sc, IWM_DEBUG_RESET | IWM_DEBUG_BEACON | IWM_DEBUG_CMD,
+	IWX_DPRINTF(sc, IWX_DEBUG_RESET | IWX_DEBUG_BEACON | IWX_DEBUG_CMD,
 	    "BEACON: tsf: %llu, ni_intval=%d\n",
 	    (unsigned long long) le64toh(ni->ni_tstamp.tsf),
 	    ni->ni_intval);
@@ -433,7 +432,7 @@ iwm_mac_ctxt_cmd_fill_sta(struct iwm_softc *sc, struct iwm_node *in,
 		ctxt_sta->dtim_tsf = htole64(tsf + dtim_offs);
 		ctxt_sta->dtim_time = htole32(tsf + dtim_offs);
 
-		IWM_DPRINTF(sc, IWM_DEBUG_RESET | IWM_DEBUG_BEACON | IWM_DEBUG_CMD,
+		IWX_DPRINTF(sc, IWX_DEBUG_RESET | IWX_DEBUG_BEACON | IWX_DEBUG_CMD,
 		    "DTIM TBTT is 0x%llx/0x%x, offset %d\n",
 		    (long long)le64toh(ctxt_sta->dtim_tsf),
 		    le32toh(ctxt_sta->dtim_time), dtim_offs);
@@ -443,7 +442,7 @@ iwm_mac_ctxt_cmd_fill_sta(struct iwm_softc *sc, struct iwm_node *in,
 		ctxt_sta->is_assoc = htole32(0);
 	}
 
-	IWM_DPRINTF(sc, IWM_DEBUG_RESET | IWM_DEBUG_CMD | IWM_DEBUG_BEACON,
+	IWX_DPRINTF(sc, IWX_DEBUG_RESET | IWX_DEBUG_CMD | IWX_DEBUG_BEACON,
 	    "%s: ni_intval: %d, bi_reciprocal: %d, dtim_interval: %d, dtim_reciprocal: %d\n",
 	    __func__,
 	    ni->ni_intval,
@@ -459,50 +458,51 @@ iwm_mac_ctxt_cmd_fill_sta(struct iwm_softc *sc, struct iwm_node *in,
 
 	/* 10 = CONN_MAX_LISTEN_INTERVAL */
 	ctxt_sta->listen_interval = htole32(10);
-	IWM_DPRINTF(sc, IWM_DEBUG_RESET | IWM_DEBUG_CMD | IWM_DEBUG_BEACON,
+	IWX_DPRINTF(sc, IWX_DEBUG_RESET | IWX_DEBUG_CMD | IWX_DEBUG_BEACON,
 	    "%s: associd=%d\n", __func__, IEEE80211_AID(ni->ni_associd));
 	ctxt_sta->assoc_id = htole32(IEEE80211_AID(ni->ni_associd));
 }
+//#endif
 
 static int
-iwm_mac_ctxt_cmd_station(struct iwm_softc *sc, struct ieee80211vap *vap,
+iwx_mac_ctxt_cmd_station(struct iwx_softc *sc, struct ieee80211vap *vap,
 	uint32_t action)
 {
 	struct ieee80211_node *ni = vap->iv_bss;
-	struct iwm_node *in = IWM_NODE(ni);
-	struct iwm_mac_ctx_cmd cmd = {};
+	struct iwx_node *in = IWX_NODE(ni);
+	struct iwx_mac_ctx_cmd cmd = {};
 
-	IWM_DPRINTF(sc, IWM_DEBUG_RESET,
+	IWX_DPRINTF(sc, IWX_DEBUG_RESET,
 	    "%s: called; action=%d\n", __func__, action);
 
 	/* Fill the common data for all mac context types */
-	iwm_mac_ctxt_cmd_common(sc, in, &cmd, action);
+	iwx_mac_ctxt_cmd_common(sc, in, &cmd, action);
 
 	/* Allow beacons to pass through as long as we are not associated,or we
 	 * do not have dtim period information */
 	if (!in->in_assoc || !vap->iv_dtim_period)
-		cmd.filter_flags |= htole32(IWM_MAC_FILTER_IN_BEACON);
+		cmd.filter_flags |= htole32(IWX_MAC_FILTER_IN_BEACON);
 	else
-		cmd.filter_flags &= ~htole32(IWM_MAC_FILTER_IN_BEACON);
+		cmd.filter_flags &= ~htole32(IWX_MAC_FILTER_IN_BEACON);
 
 	/* Fill the data specific for station mode */
-	iwm_mac_ctxt_cmd_fill_sta(sc, in,
-	    &cmd.sta, action == IWM_FW_CTXT_ACTION_ADD);
+	iwx_mac_ctxt_cmd_fill_sta(sc, in,
+	    &cmd.sta, action == IWX_FW_CTXT_ACTION_ADD);
 
-	return iwm_mac_ctxt_send_cmd(sc, &cmd);
+	return iwx_mac_ctxt_send_cmd(sc, &cmd);
 }
 
 static int
-iwm_mac_ctx_send(struct iwm_softc *sc, struct ieee80211vap *vap,
+iwx_mac_ctx_send(struct iwx_softc *sc, struct ieee80211vap *vap,
     uint32_t action)
 {
-	return iwm_mac_ctxt_cmd_station(sc, vap, action);
+	return iwx_mac_ctxt_cmd_station(sc, vap, action);
 }
 
 int
-iwm_mac_ctxt_add(struct iwm_softc *sc, struct ieee80211vap *vap)
+iwx_mac_ctxt_add(struct iwx_softc *sc, struct ieee80211vap *vap)
 {
-	struct iwm_vap *iv = IWM_VAP(vap);
+	struct iwx_vap *iv = IWX_VAP(vap);
 	int ret;
 
 	if (iv->is_uploaded != 0) {
@@ -511,7 +511,7 @@ iwm_mac_ctxt_add(struct iwm_softc *sc, struct ieee80211vap *vap)
 		return (EIO);
 	}
 
-	ret = iwm_mac_ctx_send(sc, vap, IWM_FW_CTXT_ACTION_ADD);
+	ret = iwx_mac_ctx_send(sc, vap, IWX_FW_CTXT_ACTION_ADD);
 	if (ret)
 		return (ret);
 	iv->is_uploaded = 1;
@@ -519,18 +519,17 @@ iwm_mac_ctxt_add(struct iwm_softc *sc, struct ieee80211vap *vap)
 }
 
 int
-iwm_mac_ctxt_changed(struct iwm_softc *sc, struct ieee80211vap *vap)
+iwx_mac_ctxt_changed(struct iwx_softc *sc, struct ieee80211vap *vap)
 {
-	struct iwm_vap *iv = IWM_VAP(vap);
+	struct iwx_vap *iv = IWX_VAP(vap);
 
 	if (iv->is_uploaded == 0) {
 		device_printf(sc->sc_dev, "%s: called; uploaded = 0\n",
 		    __func__);
 		return (EIO);
 	}
-	return iwm_mac_ctx_send(sc, vap, IWM_FW_CTXT_ACTION_MODIFY);
+	return iwx_mac_ctx_send(sc, vap, IWX_FW_CTXT_ACTION_MODIFY);
 }
-#endif
 
 #if 0
 static int

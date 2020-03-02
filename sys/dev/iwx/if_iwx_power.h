@@ -93,9 +93,9 @@
 #define	__IF_IWM_POWER_H__
 
 extern	int iwx_power_update_device(struct iwx_softc *sc);
-extern	int iwm_power_update_mac(struct iwx_softc *sc);
-extern	int iwm_power_update_ps(struct iwx_softc *sc);
-extern	int iwm_enable_beacon_filter(struct iwx_softc *sc,
+extern	int iwx_power_update_mac(struct iwx_softc *sc);
+extern	int iwx_power_update_ps(struct iwx_softc *sc);
+extern	int iwx_enable_beacon_filter(struct iwx_softc *sc,
 	    struct iwx_vap *ivp);
 extern	int iwx_disable_beacon_filter(struct iwx_softc *sc);
 

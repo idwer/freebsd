@@ -1,7 +1,6 @@
-/* copied from FreeBSD sys/dev/iwm/if_iwm_util.h */
+/* copied from FreeBSD sys/dev/iwm/if_iwm_led.c */
 
 /*	$OpenBSD: if_iwm.c,v 1.39 2015/03/23 00:35:19 jsg Exp $	*/
-/*	$FreeBSD$ */
 
 /*
  * Copyright (c) 2014 genua mbh <info@genua.de>
@@ -89,77 +88,105 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <sys/cdefs.h>
+__FBSDID("$FreeBSD$");
 
-/*-
- * Copyright (c) 2007-2010 Damien Bergamini <damien.bergamini@free.fr>
- *
- * Permission to use, copy, modify, and distribute this software for any
- * purpose with or without fee is hereby granted, provided that the above
- * copyright notice and this permission notice appear in all copies.
- *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
- * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
- * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
- * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
- * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
- * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
- * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
- */
-#ifndef	__IF_IWM_UTIL_H__
-#define	__IF_IWM_UTIL_H__
+#ifdef HAS_LED
+#include "opt_wlan.h"
+#include "opt_iwm.h"
 
-extern	int iwx_send_cmd(struct iwx_softc *sc, struct iwx_host_cmd *hcmd);
-extern	int iwx_send_cmd_pdu(struct iwx_softc *sc, uint32_t id,
-	    uint32_t flags, uint16_t len, const void *data);
+#include <sys/param.h>
+#include <sys/bus.h>
+#include <sys/endian.h>
+#include <sys/firmware.h>
+#include <sys/kernel.h>
+#include <sys/malloc.h>
+#include <sys/mbuf.h>
+#include <sys/mutex.h>
+#include <sys/module.h>
+#include <sys/proc.h>
+#include <sys/rman.h>
+#include <sys/socket.h>
+#include <sys/sockio.h>
+#include <sys/sysctl.h>
+#include <sys/linker.h>
 
-extern	int iwx_send_cmd_status(struct iwx_softc *sc,
-	    struct iwx_host_cmd *cmd, uint32_t *status);
-extern	int iwx_send_cmd_pdu_status(struct iwx_softc *sc, uint32_t id,
-	uint16_t len, const void *data, uint32_t *status);
-extern	void iwx_free_resp(struct iwx_softc *sc, struct iwx_host_cmd *hcmd);
+#include <machine/endian.h>
+#include <machine/bus.h>
 
-extern	int iwx_dma_contig_alloc(bus_dma_tag_t tag, struct iwx_dma_info *dma,
-				 bus_size_t size, bus_size_t alignment);
-extern	void iwx_dma_contig_free(struct iwx_dma_info *);
+#include <net/bpf.h>
 
-extern	int iwx_send_lq_cmd(struct iwx_softc *sc, struct iwx_lq_cmd *lq,
-				boolean_t init);
+#include <net/if.h>
+#include <net/if_var.h>
+#include <net/if_arp.h>
+#include <net/ethernet.h>
+#include <net/if_dl.h>
+#include <net/if_media.h>
+#include <net/if_types.h>
 
-extern	boolean_t iwx_rx_diversity_allowed(struct iwx_softc *sc);
+#include <netinet/in.h>
+#include <netinet/in_systm.h>
+#include <netinet/if_ether.h>
+#include <netinet/ip.h>
 
-extern	uint8_t iwx_ridx2rate(struct ieee80211_rateset *rs, int ridx);
-extern	int iwx_enable_txq(struct iwx_softc *sc, int sta_id, int qid, int fifo);
-extern	int iwx_flush_tx_path(struct iwx_softc *sc, uint32_t tfd_msk,
-				  uint32_t flags);
+#include <net80211/ieee80211_var.h>
+#include <net80211/ieee80211_regdomain.h>
+#include <net80211/ieee80211_ratectl.h>
+#include <net80211/ieee80211_radiotap.h>
 
-static inline uint8_t
-iwx_get_valid_tx_ant(struct iwx_softc *sc)
+#include <dev/iwm/if_iwmreg.h>
+#include <dev/iwm/if_iwmvar.h>
+#include <dev/iwm/if_iwm_debug.h>
+#include <dev/iwm/if_iwm_util.h>
+#include <dev/iwm/if_iwm_led.h>
+
+/* Set led register on */
+void
+iwm_led_enable(struct iwm_softc *sc)
 {
-	return sc->nvm_data && sc->nvm_data->valid_tx_ant ?
-	       sc->sc_fw.valid_tx_ant & sc->nvm_data->valid_tx_ant :
-	       sc->sc_fw.valid_tx_ant;
+	IWM_WRITE(sc, IWM_CSR_LED_REG, IWM_CSR_LED_REG_TURN_ON);
 }
 
-static inline uint8_t
-iwx_get_valid_rx_ant(struct iwx_softc *sc)
+/* Set led register off */
+void
+iwm_led_disable(struct iwm_softc *sc)
 {
-	return sc->nvm_data && sc->nvm_data->valid_rx_ant ?
-	       sc->sc_fw.valid_rx_ant & sc->nvm_data->valid_rx_ant :
-	       sc->sc_fw.valid_rx_ant;
+	IWM_WRITE(sc, IWM_CSR_LED_REG, IWM_CSR_LED_REG_TURN_OFF);
 }
 
-static inline uint32_t
-iwx_get_phy_config(struct iwx_softc *sc)
+static int
+iwm_led_is_enabled(struct iwm_softc *sc)
 {
-	uint32_t phy_config = ~(IWX_FW_PHY_CFG_TX_CHAIN |
-				IWX_FW_PHY_CFG_RX_CHAIN);
-	uint32_t valid_rx_ant = iwx_get_valid_rx_ant(sc);
-	uint32_t valid_tx_ant = iwx_get_valid_tx_ant(sc);
-
-	phy_config |= valid_tx_ant << IWX_FW_PHY_CFG_TX_CHAIN_POS |
-		      valid_rx_ant << IWX_FW_PHY_CFG_RX_CHAIN_POS;
-
-	return sc->sc_fw.phy_config & phy_config;
+	return (IWM_READ(sc, IWM_CSR_LED_REG) == IWM_CSR_LED_REG_TURN_ON);
 }
 
-#endif	/* __IF_IWM_UTIL_H__ */
+static void
+iwm_led_blink_timeout(void *arg)
+{
+	struct iwm_softc *sc = arg;
+
+	if (sc->sc_attached == 0)
+		return;
+
+	if (iwm_led_is_enabled(sc))
+		iwm_led_disable(sc);
+	else
+		iwm_led_enable(sc);
+
+	callout_reset(&sc->sc_led_blink_to, (200 * hz) / 1000,
+	    iwm_led_blink_timeout, sc);
+}
+
+void
+iwm_led_blink_start(struct iwm_softc *sc)
+{
+	callout_reset(&sc->sc_led_blink_to, 0, iwm_led_blink_timeout, sc);
+}
+
+void
+iwm_led_blink_stop(struct iwm_softc *sc)
+{
+	callout_stop(&sc->sc_led_blink_to);
+	iwm_led_disable(sc);
+}
+#endif
