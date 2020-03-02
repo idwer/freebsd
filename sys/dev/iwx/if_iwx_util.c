@@ -493,7 +493,6 @@ iwx_dma_contig_free(struct iwx_dma_info *dma)
 	}
 }
 
-#if 0
 /**
  * iwm_send_lq_cmd() - Send link quality command
  * @init: This command is sent as part of station initialization right
@@ -505,21 +504,20 @@ iwx_dma_contig_free(struct iwx_dma_info *dma)
  * progress.
  */
 int
-iwm_send_lq_cmd(struct iwm_softc *sc, struct iwm_lq_cmd *lq, boolean_t init)
+iwx_send_lq_cmd(struct iwx_softc *sc, struct iwx_lq_cmd *lq, boolean_t init)
 {
-	struct iwm_host_cmd cmd = {
-		.id = IWM_LQ_CMD,
-		.len = { sizeof(struct iwm_lq_cmd), },
-		.flags = init ? 0 : IWM_CMD_ASYNC,
+	struct iwx_host_cmd cmd = {
+		.id = IWX_LQ_CMD,
+		.len = { sizeof(struct iwx_lq_cmd), },
+		.flags = init ? 0 : IWX_CMD_ASYNC,
 		.data = { lq, },
 	};
 
-	if (lq->sta_id == IWM_STATION_COUNT)
+	if (lq->sta_id == IWX_STATION_COUNT)
 		return EINVAL;
 
-	return iwm_send_cmd(sc, &cmd);
+	return iwx_send_cmd(sc, &cmd);
 }
-#endif
 
 boolean_t
 iwx_rx_diversity_allowed(struct iwx_softc *sc)

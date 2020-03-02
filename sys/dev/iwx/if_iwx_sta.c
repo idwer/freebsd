@@ -197,6 +197,18 @@ iwx_sta_send_to_fw(struct iwx_softc *sc, struct iwx_node *in,
 	return ret;
 }
 
+int
+iwx_add_sta(struct iwx_softc *sc, struct iwx_node *in)
+{
+	return iwx_sta_send_to_fw(sc, in, FALSE);
+}
+
+int
+iwx_update_sta(struct iwx_softc *sc, struct iwx_node *in)
+{
+	return iwx_sta_send_to_fw(sc, in, TRUE);
+}
+
 static int
 iwx_add_int_sta_common(struct iwx_softc *sc, struct iwx_int_sta *sta,
     const uint8_t *addr, uint16_t mac_id, uint16_t color)
@@ -258,4 +270,72 @@ iwx_add_aux_sta(struct iwx_softc *sc)
 		sc->sc_aux_sta.sta_id = IWX_STATION_COUNT;
 	}
 	return ret;
+}
+
+/*
+ * Remove a station from the FW table. Before sending the command to remove
+ * the station validate that the station is indeed known to the driver (sanity
+ * only).
+ */
+static int
+iwx_rm_sta_common(struct iwx_softc *sc)
+{
+	struct iwx_rm_sta_cmd rm_sta_cmd = {
+		.sta_id = IWX_STATION_ID,
+	};
+	int ret;
+
+	ret = iwx_send_cmd_pdu(sc, IWX_REMOVE_STA, 0,
+				   sizeof(rm_sta_cmd), &rm_sta_cmd);
+	if (ret) {
+		device_printf(sc->sc_dev,
+		    "Failed to remove station. Id=%d\n", IWX_STATION_ID);
+		return ret;
+	}
+
+	return 0;
+}
+
+int
+iwx_rm_sta(struct iwx_softc *sc, struct ieee80211vap *vap,
+	boolean_t is_assoc)
+{
+	uint32_t tfd_queue_msk = 0;
+	int ret;
+	int ac;
+
+	ret = iwx_drain_sta(sc, IWX_VAP(vap), TRUE);
+	if (ret)
+		return ret;
+	for (ac = 0; ac < WME_NUM_AC; ac++) {
+		tfd_queue_msk |= htole32(1 << iwx_ac_to_tx_fifo[ac]);
+	}
+	ret = iwx_flush_tx_path(sc, tfd_queue_msk, IWX_CMD_SYNC);
+	if (ret)
+		return ret;
+#ifdef notyet /* function not yet implemented */
+	ret = iwl_trans_wait_tx_queue_empty(mvm->trans,
+					    mvm_sta->tfd_queue_msk);
+	if (ret)
+		return ret;
+#endif
+	ret = iwx_drain_sta(sc, IWX_VAP(vap), FALSE);
+
+	/* if we are associated - we can't remove the AP STA now */
+	if (is_assoc)
+		return ret;
+
+	/* XXX wait until STA is drained */
+
+	ret = iwx_rm_sta_common(sc);
+
+	return ret;
+}
+
+int
+iwx_rm_sta_id(struct iwx_softc *sc, struct ieee80211vap *vap)
+{
+	/* XXX wait until STA is drained */
+
+	return iwx_rm_sta_common(sc);
 }
