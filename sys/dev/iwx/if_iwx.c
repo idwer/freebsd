@@ -2495,12 +2495,35 @@ iwx_resume(device_t dev)
 	return 0;
 }
 
+static int
+iwx_suspend(device_t dev)
+{
+	int do_stop = 0;
+	struct iwx_softc *sc = device_get_softc(dev);
+
+	do_stop = !! (sc->sc_ic.ic_nrunning > 0);
+
+	if (!sc->sc_attached)
+		return (0);
+
+	ieee80211_suspend_all(&sc->sc_ic);
+
+	if (do_stop) {
+		IWX_LOCK(sc);
+		iwx_stop(sc);
+		sc->sc_flags |= IWX_FLAG_SCANNING;
+		IWX_UNLOCK(sc);
+	}
+
+	return (0);
+}
+
 static device_method_t iwx_pci_methods[] = {
         /* Device interface */
 	DEVMETHOD(device_probe,         iwx_probe),
 //        DEVMETHOD(device_attach,        iwx_attach),
 //        DEVMETHOD(device_detach,        iwx_detach),
-//        DEVMETHOD(device_suspend,       iwx_suspend),
+        DEVMETHOD(device_suspend,       iwx_suspend),
         DEVMETHOD(device_resume,        iwx_resume),
 
         DEVMETHOD_END
