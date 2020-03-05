@@ -161,7 +161,6 @@ __FBSDID("$FreeBSD$");
 #include <dev/iwx/if_iwx_util.h>
 #include <dev/iwx/if_iwx_pcie_trans.h>
 
-#if 0
 /*
  * Send a command to the firmware.  We try to implement the Linux
  * driver interface for the routine.
@@ -170,16 +169,16 @@ __FBSDID("$FreeBSD$");
  * For now, we always copy the first part and map the second one (if it exists).
  */
 int
-iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
+iwx_send_cmd(struct iwx_softc *sc, struct iwx_host_cmd *hcmd)
 {
-	struct iwm_tx_ring *ring = &sc->txq[IWM_CMD_QUEUE];
-	struct iwm_tfd *desc;
-	struct iwm_tx_data *txdata = NULL;
-	struct iwm_device_cmd *cmd;
+	struct iwx_tx_ring *ring = &sc->txq[IWX_DQA_CMD_QUEUE];
+	struct iwx_tfh_tfd *desc;
+	struct iwx_tx_data *txdata = NULL;
+	struct iwx_device_cmd *cmd;
 	struct mbuf *m;
 	bus_dma_segment_t seg;
 	bus_addr_t paddr;
-	uint32_t addr_lo;
+	uint64_t addr;
 	int error = 0, i, paylen, off;
 	int code;
 	int async, wantresp;
@@ -189,8 +188,8 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 	uint8_t *data;
 
 	code = hcmd->id;
-	async = hcmd->flags & IWM_CMD_ASYNC;
-	wantresp = hcmd->flags & IWM_CMD_WANT_SKB;
+	async = hcmd->flags & IWX_CMD_ASYNC;
+	wantresp = hcmd->flags & IWX_CMD_WANT_SKB;
 	data = NULL;
 
 	for (i = 0, paylen = 0; i < nitems(hcmd->len); i++) {
@@ -201,16 +200,16 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 	if (wantresp) {
 		KASSERT(!async, ("invalid async parameter"));
 		while (sc->sc_wantresp != -1)
-			msleep(&sc->sc_wantresp, &sc->sc_mtx, 0, "iwmcmdsl", 0);
+			msleep(&sc->sc_wantresp, &sc->sc_mtx, 0, "iwxcmdsl", 0);
 		sc->sc_wantresp = ring->qid << 16 | ring->cur;
-		IWM_DPRINTF(sc, IWM_DEBUG_CMD,
+		IWX_DPRINTF(sc, IWX_DEBUG_CMD,
 		    "wantresp is %x\n", sc->sc_wantresp);
 	}
 
 	/*
 	 * Is the hardware still available?  (after e.g. above wait).
 	 */
-	if (sc->sc_flags & IWM_FLAG_STOPPED) {
+	if (sc->sc_flags & IWX_FLAG_STOPPED) {
 		error = ENXIO;
 		goto out;
 	}
@@ -218,7 +217,7 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 	desc = &ring->desc[ring->cur];
 	txdata = &ring->data[ring->cur];
 
-	group_id = iwm_cmd_groupid(code);
+	group_id = iwx_cmd_groupid(code);
 	if (group_id != 0) {
 		hdrlen = sizeof(cmd->hdr_wide);
 		datasz = sizeof(cmd->data_wide);
@@ -228,19 +227,19 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 	}
 
 	if (paylen > datasz) {
-		IWM_DPRINTF(sc, IWM_DEBUG_CMD,
+		IWX_DPRINTF(sc, IWX_DEBUG_CMD,
 		    "large command paylen=%u len0=%u\n",
 			paylen, hcmd->len[0]);
 		/* Command is too large */
 		size_t totlen = hdrlen + paylen;
-		if (paylen > IWM_MAX_CMD_PAYLOAD_SIZE) {
+		if (paylen > IWX_MAX_CMD_PAYLOAD_SIZE) {
 			device_printf(sc->sc_dev,
 			    "firmware command too long (%zd bytes)\n",
 			    totlen);
 			error = EINVAL;
 			goto out;
 		}
-		m = m_getjcl(M_NOWAIT, MT_DATA, M_PKTHDR, IWM_RBUF_SIZE);
+		m = m_getjcl(M_NOWAIT, MT_DATA, M_PKTHDR, IWX_RBUF_SIZE);
 		if (m == NULL) {
 			error = ENOBUFS;
 			goto out;
@@ -255,8 +254,8 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 			m_freem(m);
 			goto out;
 		}
-		txdata->m = m; /* mbuf will be freed in iwm_cmd_done() */
-		cmd = mtod(m, struct iwm_device_cmd *);
+		txdata->m = m; /* mbuf will be freed in iwx_cmd_done() */
+		cmd = mtod(m, struct iwx_device_cmd *);
 		paddr = seg.ds_addr;
 	} else {
 		cmd = &ring->cmd[ring->cur];
@@ -264,15 +263,15 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 	}
 
 	if (group_id != 0) {
-		cmd->hdr_wide.opcode = iwm_cmd_opcode(code);
+		cmd->hdr_wide.opcode = iwx_cmd_opcode(code);
 		cmd->hdr_wide.group_id = group_id;
 		cmd->hdr_wide.qid = ring->qid;
 		cmd->hdr_wide.idx = ring->cur;
 		cmd->hdr_wide.length = htole16(paylen);
-		cmd->hdr_wide.version = iwm_cmd_version(code);
+		cmd->hdr_wide.version = iwx_cmd_version(code);
 		data = cmd->data_wide;
 	} else {
-		cmd->hdr.code = iwm_cmd_opcode(code);
+		cmd->hdr.code = iwx_cmd_opcode(code);
 		cmd->hdr.flags = 0;
 		cmd->hdr.qid = ring->qid;
 		cmd->hdr.idx = ring->cur;
@@ -287,15 +286,13 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 	}
 	KASSERT(off == paylen, ("off %d != paylen %d", off, paylen));
 
-	/* lo field is not aligned */
-	addr_lo = htole32((uint32_t)paddr);
-	memcpy(&desc->tbs[0].lo, &addr_lo, sizeof(uint32_t));
-	desc->tbs[0].hi_n_len  = htole16(iwm_get_dma_hi_addr(paddr)
-	    | ((hdrlen + paylen) << 4));
+	desc->tbs[0].tb_len = htole16(hdrlen + paylen);
+	addr = htole64((uint64_t)paddr);
+	memcpy(&desc->tbs[0].addr, &addr, sizeof(addr));
 	desc->num_tbs = 1;
 
-	IWM_DPRINTF(sc, IWM_DEBUG_CMD,
-	    "iwm_send_cmd 0x%x size=%lu %s\n",
+	IWX_DPRINTF(sc, IWX_DEBUG_CMD,
+	    "iwx_send_cmd 0x%x size=%lu %s\n",
 	    code,
 	    (unsigned long) (hcmd->len[0] + hcmd->len[1] + hdrlen),
 	    async ? " (async)" : "");
@@ -310,26 +307,23 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 	bus_dmamap_sync(ring->desc_dma.tag, ring->desc_dma.map,
 	    BUS_DMASYNC_PREWRITE);
 
-	error = iwm_pcie_set_cmd_in_flight(sc);
+	error = iwx_pcie_set_cmd_in_flight(sc);
 	if (error)
 		goto out;
 	ring->queued++;
 
-#if 0
-	iwm_update_sched(sc, ring->qid, ring->cur, 0, 0);
-#endif
-	IWM_DPRINTF(sc, IWM_DEBUG_CMD,
+	IWX_DPRINTF(sc, IWX_DEBUG_CMD,
 	    "sending command 0x%x qid %d, idx %d\n",
 	    code, ring->qid, ring->cur);
 
 	/* Kick command ring. */
-	ring->cur = (ring->cur + 1) % IWM_TX_RING_COUNT;
-	IWM_WRITE(sc, IWM_HBUS_TARG_WRPTR, ring->qid << 8 | ring->cur);
+	ring->cur = (ring->cur + 1) % IWX_CMD_QUEUE_SIZE;
+	IWX_WRITE(sc, IWX_HBUS_TARG_WRPTR, ring->qid << 16 | ring->cur);
 
 	if (!async) {
 		/* m..m-mmyy-mmyyyy-mym-ym m-my generation */
 		int generation = sc->sc_generation;
-		error = msleep(desc, &sc->sc_mtx, PCATCH, "iwmcmd", hz);
+		error = msleep(desc, &sc->sc_mtx, PCATCH, "iwxcmd", hz);
 		if (error == 0) {
 			/* if hardware is no longer up, return error */
 			if (generation != sc->sc_generation) {
@@ -341,13 +335,14 @@ iwm_send_cmd(struct iwm_softc *sc, struct iwm_host_cmd *hcmd)
 	}
  out:
 	if (wantresp && error != 0) {
-		iwm_free_resp(sc, hcmd);
+		iwx_free_resp(sc, hcmd);
 	}
 
 	return error;
 }
 
 /* iwlwifi: mvm/utils.c */
+#if 0
 int
 iwx_send_cmd_pdu(struct iwx_softc *sc, uint32_t id,
 	uint32_t flags, uint16_t len, const void *data)

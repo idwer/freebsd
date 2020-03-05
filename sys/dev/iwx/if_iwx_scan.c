@@ -168,20 +168,6 @@ __FBSDID("$FreeBSD$");
 #define IWM_SPARSE_EBS_SCAN_RATIO 1
 
 #if 0
-static uint16_t
-iwm_scan_rx_chain(struct iwm_softc *sc)
-{
-	uint16_t rx_chain;
-	uint8_t rx_ant;
-
-	rx_ant = iwm_get_valid_rx_ant(sc);
-	rx_chain = rx_ant << IWM_PHY_RX_CHAIN_VALID_POS;
-	rx_chain |= rx_ant << IWM_PHY_RX_CHAIN_FORCE_MIMO_SEL_POS;
-	rx_chain |= rx_ant << IWM_PHY_RX_CHAIN_FORCE_SEL_POS;
-	rx_chain |= 0x1 << IWM_PHY_RX_CHAIN_DRIVER_FORCE_POS;
-	return htole16(rx_chain);
-}
-
 static uint32_t
 iwm_scan_rxon_flags(struct ieee80211_channel *c)
 {
@@ -189,29 +175,6 @@ iwm_scan_rxon_flags(struct ieee80211_channel *c)
 		return htole32(IWM_PHY_BAND_24);
 	else
 		return htole32(IWM_PHY_BAND_5);
-}
-
-static uint32_t
-iwm_scan_rate_n_flags(struct iwm_softc *sc, int flags, int no_cck)
-{
-	uint32_t tx_ant;
-	int i, ind;
-
-	for (i = 0, ind = sc->sc_scan_last_antenna;
-	    i < IWM_RATE_MCS_ANT_NUM; i++) {
-		ind = (ind + 1) % IWM_RATE_MCS_ANT_NUM;
-		if (iwm_get_valid_tx_ant(sc) & (1 << ind)) {
-			sc->sc_scan_last_antenna = ind;
-			break;
-		}
-	}
-	tx_ant = (1 << sc->sc_scan_last_antenna) << IWM_RATE_MCS_ANT_POS;
-
-	if ((flags & IEEE80211_CHAN_2GHZ) && !no_cck)
-		return htole32(IWM_RATE_1M_PLCP | IWM_RATE_MCS_CCK_MSK |
-				   tx_ant);
-	else
-		return htole32(IWM_RATE_6M_PLCP | tx_ant);
 }
 
 static inline boolean_t
@@ -296,50 +259,6 @@ iwm_scan_skip_channel(struct ieee80211_channel *c)
 		return 0;
 	else
 		return 1;
-}
-
-static uint8_t
-iwm_lmac_scan_fill_channels(struct iwm_softc *sc,
-    struct iwm_scan_channel_cfg_lmac *chan, int n_ssids)
-{
-	struct ieee80211com *ic = &sc->sc_ic;
-	struct ieee80211_scan_state *ss = ic->ic_scan;
-	struct ieee80211_channel *c;
-	uint8_t nchan;
-	int j;
-
-	for (nchan = j = 0;
-	    j < ss->ss_last && nchan < sc->sc_fw.ucode_capa.n_scan_channels;
-	    j++) {
-		c = ss->ss_chans[j];
-		/*
-		 * Catch other channels, in case we have 900MHz channels or
-		 * something in the chanlist.
-		 */
-		if (!IEEE80211_IS_CHAN_2GHZ(c) && !IEEE80211_IS_CHAN_5GHZ(c)) {
-			IWM_DPRINTF(sc, IWM_DEBUG_RESET | IWM_DEBUG_EEPROM,
-			    "%s: skipping channel (freq=%d, ieee=%d, flags=0x%08x)\n",
-			    __func__, c->ic_freq, c->ic_ieee, c->ic_flags);
-			continue;
-		}
-
-		IWM_DPRINTF(sc, IWM_DEBUG_RESET | IWM_DEBUG_EEPROM,
-		    "Adding channel %d (%d Mhz) to the list\n",
-		    nchan, c->ic_freq);
-		chan->channel_num = htole16(ieee80211_mhz2ieee(c->ic_freq, 0));
-		chan->iter_count = htole16(1);
-		chan->iter_interval = htole32(0);
-		chan->flags = htole32(IWM_UNIFIED_SCAN_CHANNEL_PARTIAL);
-		chan->flags |= htole32(IWM_SCAN_CHANNEL_NSSIDS(n_ssids));
-		/* XXX IEEE80211_SCAN_NOBCAST flag is never set. */
-		if (!IEEE80211_IS_CHAN_PASSIVE(c) &&
-		    (!(ss->ss_flags & IEEE80211_SCAN_NOBCAST) || n_ssids != 0))
-			chan->flags |= htole32(IWM_SCAN_CHANNEL_TYPE_ACTIVE);
-		chan++;
-		nchan++;
-	}
-
-	return nchan;
 }
 
 static uint8_t
@@ -607,7 +526,7 @@ iwm_scan_size(struct iwm_softc *sc)
 }
 
 int
-iwm_umac_scan(struct iwm_softc *sc)
+iwx_umac_scan(struct iwm_softc *sc)
 {
 	struct iwm_host_cmd hcmd = {
 		.id = iwm_cmd_id(IWM_SCAN_REQ_UMAC, IWM_ALWAYS_LONG_GROUP, 0),
@@ -712,128 +631,6 @@ iwm_umac_scan(struct iwm_softc *sc)
 	if (!ret)
 		IWM_DPRINTF(sc, IWM_DEBUG_SCAN,
 		    "Scan request was sent successfully\n");
-	free(req, M_DEVBUF);
-	return ret;
-}
-
-int
-iwm_lmac_scan(struct iwm_softc *sc)
-{
-	struct iwm_host_cmd hcmd = {
-		.id = IWM_SCAN_OFFLOAD_REQUEST_CMD,
-		.len = { 0, },
-		.data = { NULL, },
-		.flags = IWM_CMD_SYNC,
-	};
-	struct ieee80211_scan_state *ss = sc->sc_ic.ic_scan;
-	struct iwm_scan_req_lmac *req;
-	size_t req_len;
-	uint8_t i, nssid;
-	int ret;
-
-	IWM_DPRINTF(sc, IWM_DEBUG_SCAN,
-	    "Handling ieee80211 scan request\n");
-
-	req_len = iwm_scan_size(sc);
-	if (req_len > IWM_MAX_CMD_PAYLOAD_SIZE)
-		return ENOMEM;
-	req = malloc(req_len, M_DEVBUF, M_NOWAIT | M_ZERO);
-	if (req == NULL)
-		return ENOMEM;
-
-	hcmd.len[0] = (uint16_t)req_len;
-	hcmd.data[0] = (void *)req;
-
-	/* These timings correspond to iwlwifi's UNASSOC scan. */
-	req->active_dwell = 10;
-	req->passive_dwell = 110;
-	req->fragmented_dwell = 44;
-	req->extended_dwell = 90;
-	req->max_out_time = 0;
-	req->suspend_time = 0;
-
-	req->scan_prio = htole32(IWM_SCAN_PRIORITY_HIGH);
-	req->rx_chain_select = iwm_scan_rx_chain(sc);
-	req->iter_num = htole32(1);
-	req->delay = 0;
-
-	req->scan_flags = htole32(IWM_LMAC_SCAN_FLAG_PASS_ALL |
-	    IWM_LMAC_SCAN_FLAG_ITER_COMPLETE |
-	    IWM_LMAC_SCAN_FLAG_EXTENDED_DWELL);
-	if (iwm_rrm_scan_needed(sc))
-		req->scan_flags |= htole32(IWM_LMAC_SCAN_FLAGS_RRM_ENABLED);
-
-	req->flags = iwm_scan_rxon_flags(sc->sc_ic.ic_scan->ss_chans[0]);
-
-	req->filter_flags =
-	    htole32(IWM_MAC_FILTER_ACCEPT_GRP | IWM_MAC_FILTER_IN_BEACON);
-
-	/* Tx flags 2 GHz. */
-	req->tx_cmd[0].tx_flags = htole32(IWM_TX_CMD_FLG_SEQ_CTL |
-	    IWM_TX_CMD_FLG_BT_DIS);
-	req->tx_cmd[0].rate_n_flags =
-	    iwm_scan_rate_n_flags(sc, IEEE80211_CHAN_2GHZ, 1/*XXX*/);
-	req->tx_cmd[0].sta_id = sc->sc_aux_sta.sta_id;
-
-	/* Tx flags 5 GHz. */
-	req->tx_cmd[1].tx_flags = htole32(IWM_TX_CMD_FLG_SEQ_CTL |
-	    IWM_TX_CMD_FLG_BT_DIS);
-	req->tx_cmd[1].rate_n_flags =
-	    iwm_scan_rate_n_flags(sc, IEEE80211_CHAN_5GHZ, 1/*XXX*/);
-	req->tx_cmd[1].sta_id = sc->sc_aux_sta.sta_id;
-
-	/* Check if we're doing an active directed scan. */
-	nssid = MIN(ss->ss_nssid, IWM_PROBE_OPTION_MAX);
-	for (i = 0; i < nssid; i++) {
-		req->direct_scan[i].id = IEEE80211_ELEMID_SSID;
-		req->direct_scan[i].len = MIN(ss->ss_ssid[i].len,
-		    IEEE80211_NWID_LEN);
-		memcpy(req->direct_scan[i].ssid, ss->ss_ssid[i].ssid,
-		    req->direct_scan[i].len);
-		/* XXX debug */
-	}
-	if (nssid != 0) {
-		req->scan_flags |=
-		    htole32(IWM_LMAC_SCAN_FLAG_PRE_CONNECTION);
-	} else
-		req->scan_flags |= htole32(IWM_LMAC_SCAN_FLAG_PASSIVE);
-
-	req->n_channels = iwm_lmac_scan_fill_channels(sc,
-	    (struct iwm_scan_channel_cfg_lmac *)req->data, nssid);
-
-	ret = iwm_fill_probe_req(sc,
-			    (struct iwm_scan_probe_req *)(req->data +
-			    (sizeof(struct iwm_scan_channel_cfg_lmac) *
-			    sc->sc_fw.ucode_capa.n_scan_channels)));
-	if (ret) {
-		free(req, M_DEVBUF);
-		return ret;
-	}
-
-	/* Specify the scan plan: We'll do one iteration. */
-	req->schedule[0].iterations = 1;
-	req->schedule[0].full_scan_mul = 1;
-
-	if (iwm_scan_use_ebs(sc)) {
-		req->channel_opt[0].flags =
-			htole16(IWM_SCAN_CHANNEL_FLAG_EBS |
-				IWM_SCAN_CHANNEL_FLAG_EBS_ACCURATE |
-				IWM_SCAN_CHANNEL_FLAG_CACHE_ADD);
-		req->channel_opt[0].non_ebs_ratio =
-			htole16(IWM_DENSE_EBS_SCAN_RATIO);
-		req->channel_opt[1].flags =
-			htole16(IWM_SCAN_CHANNEL_FLAG_EBS |
-				IWM_SCAN_CHANNEL_FLAG_EBS_ACCURATE |
-				IWM_SCAN_CHANNEL_FLAG_CACHE_ADD);
-		req->channel_opt[1].non_ebs_ratio =
-			htole16(IWM_SPARSE_EBS_SCAN_RATIO);
-	}
-
-	ret = iwm_send_cmd(sc, &hcmd);
-	if (!ret) {
-		IWM_DPRINTF(sc, IWM_DEBUG_SCAN,
-		    "Scan request was sent successfully\n");
-	}
 	free(req, M_DEVBUF);
 	return ret;
 }

@@ -361,10 +361,13 @@ iwx_add_aux_sta(struct iwx_softc *sc)
 	sc->sc_aux_sta.tfd_queue_msk = (1 << IWX_AUX_QUEUE);
 
 	/* Map Aux queue to fifo - needs to happen before adding Aux station */
+#if 0
+// todo: update parameters for iwx_enable_txq()
 	ret = iwx_enable_txq(sc, IWX_AUX_STA_ID, IWX_AUX_QUEUE,
 	    IWX_TX_FIFO_MCAST);
 	if (ret)
 		return ret;
+#endif
 
 	ret = iwx_add_int_sta_common(sc, &sc->sc_aux_sta, NULL,
 					 IWX_MAC_INDEX_AUX, 0);
@@ -372,6 +375,7 @@ iwx_add_aux_sta(struct iwx_softc *sc)
 	if (ret) {
 		memset(&sc->sc_aux_sta, 0, sizeof(sc->sc_aux_sta));
 		sc->sc_aux_sta.sta_id = IWX_STATION_COUNT;
+		sc->sc_aux_sta.station_type = IWX_STA_AUX_ACTIVITY;
 	}
 	return ret;
 }

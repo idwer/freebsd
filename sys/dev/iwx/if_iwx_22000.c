@@ -80,21 +80,22 @@ __FBSDID("$FreeBSD$");
 
 #include "if_iwx_config.h"
 
-#if 0
-#define IWM9260_FW	"iwm9260fw"
+//#if 0
+// todo rename 22500 to 22000
+#define IWX22000_FW	"iwx22500fw"
 
-#define IWM_NVM_HW_SECTION_NUM_FAMILY_9260	10
+#define IWM_NVM_HW_SECTION_NUM_FAMILY_22000	10
 
-#define IWM_DEVICE_9260_COMMON						\
-	.device_family = IWM_DEVICE_FAMILY_9000,			\
-	.eeprom_size = IWM_OTP_LOW_IMAGE_SIZE_FAMILY_9000,		\
-	.nvm_hw_section_num = IWM_NVM_HW_SECTION_NUM_FAMILY_9260
+#define IWX_DEVICE_22000_COMMON						\
+	.device_family = IWX_DEVICE_FAMILY_22000,			\
+	.eeprom_size = IWX_OTP_LOW_IMAGE_SIZE_FAMILY_22000,		\
+//	.nvm_hw_section_num = IWX_NVM_HW_SECTION_NUM_FAMILY_22000
 
-const struct iwm_cfg iwm9260_cfg = {
-	.name = "Intel(R) Dual Band Wireless AC 9260",
-	.fw_name = IWM9260_FW,
-	IWM_DEVICE_9260_COMMON,
+const struct iwx_cfg iwx22000_cfg = {
+	.name = "in need of a better name /* Intel(R) Dual Band Wireless AC 9260 */",
+	.fw_name = IWX22000_FW,
+	IWX_DEVICE_22000_COMMON,
 	.host_interrupt_operation_mode = 0,
-	.mqrx_supported = 1,
+//	.mqrx_supported = 1,
 };
-#endif
+//#endif

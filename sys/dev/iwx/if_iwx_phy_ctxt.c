@@ -208,14 +208,21 @@ iwx_phy_ctxt_cmd_data(struct iwx_softc *sc,
 	    iwx_get_valid_rx_ant(sc),
 	    iwx_get_valid_tx_ant(sc));
 
-
-	cmd->ci.band = IEEE80211_IS_CHAN_2GHZ(chan) ?
-	    IWX_PHY_BAND_24 : IWX_PHY_BAND_5;
-
-	cmd->ci.channel = ieee80211_chan2ieee(ic, chan);
-	cmd->ci.width = IWX_PHY_VHT_CHANNEL_MODE20;
-	cmd->ci.ctrl_pos = IWX_PHY_VHT_CTRL_POS_1_BELOW;
-
+	if (isset(sc->sc_enabled_capa, IWX_UCODE_TLV_CAPA_ULTRA_HB_CHANNELS)) {
+		cmd->ci.band = IEEE80211_IS_CHAN_2GHZ(chan) ?
+		    IWX_PHY_BAND_24 : IWX_PHY_BAND_5;
+		cmd->ci.channel = htole32(ieee80211_chan2ieee(ic, chan));
+		cmd->ci.width = IWX_PHY_VHT_CHANNEL_MODE20;
+		cmd->ci.ctrl_pos = IWX_PHY_VHT_CTRL_POS_1_BELOW;
+	} else {
+		struct iwx_fw_channel_info_v1 *ci_v1;
+		ci_v1 = (struct iwx_fw_channel_info_v1 *)&cmd->ci;
+		ci_v1->band = IEEE80211_IS_CHAN_2GHZ(chan) ?
+		    IWX_PHY_BAND_24 : IWX_PHY_BAND_5;
+		ci_v1->channel = ieee80211_chan2ieee(ic, chan);
+		ci_v1->width = IWX_PHY_VHT_CHANNEL_MODE20;
+		ci_v1->ctrl_pos = IWX_PHY_VHT_CTRL_POS_1_BELOW;
+	}
 	/* Set rx the chains */
 	idle_cnt = chains_static;
 	active_cnt = chains_dynamic;
@@ -255,6 +262,7 @@ iwx_phy_ctxt_apply(struct iwx_softc *sc,
 {
 	struct iwx_phy_context_cmd cmd;
 	int ret;
+	size_t len;
 
 	IWX_DPRINTF(sc, IWX_DEBUG_RESET | IWX_DEBUG_CMD,
 	    "%s: called; channel=%p\n",
@@ -264,12 +272,20 @@ iwx_phy_ctxt_apply(struct iwx_softc *sc,
 	/* Set the command header fields */
 	iwx_phy_ctxt_cmd_hdr(sc, ctxt, &cmd, action, apply_time);
 
+	/*
+	 * Intel resized fw_channel_info struct and neglected to resize the
+	 * phy_context_cmd struct which contains it; so magic happens with
+	 * command length adjustments at run-time... :(
+	 */
 	/* Set the command data */
 	iwx_phy_ctxt_cmd_data(sc, &cmd, ctxt->channel,
 	    chains_static, chains_dynamic);
 
-	ret = iwx_send_cmd_pdu(sc, IWX_PHY_CONTEXT_CMD, IWX_CMD_SYNC,
-	    sizeof(struct iwx_phy_context_cmd), &cmd);
+	len = sizeof(struct iwx_phy_context_cmd);
+	if (!isset(sc->sc_enabled_capa, IWX_UCODE_TLV_CAPA_ULTRA_HB_CHANNELS))
+		len -= (sizeof(struct iwx_fw_channel_info) -
+		    sizeof(struct iwx_fw_channel_info_v1));
+	ret = iwx_send_cmd_pdu(sc, IWX_PHY_CONTEXT_CMD, 0, len, &cmd);
 	if (ret) {
 		device_printf(sc->sc_dev,
 		    "PHY ctxt cmd error. ret=%d\n", ret);

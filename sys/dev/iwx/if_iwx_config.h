@@ -78,11 +78,8 @@
 
 enum iwm_device_family {
 	IWM_DEVICE_FAMILY_UNDEFINED,
-#if 0
-	IWM_DEVICE_FAMILY_7000,
-	IWM_DEVICE_FAMILY_8000,
-	IWM_DEVICE_FAMILY_9000,
-#endif
+	IWX_DEVICE_FAMILY_22000,
+	IWX_DEVICE_FAMILY_22560,
 };
 
 #define IWM_DEFAULT_MAX_TX_POWER	22
@@ -105,22 +102,16 @@ static inline uint8_t num_of_ant(uint8_t mask)
 }
 
 /* lower blocks contain EEPROM image and calibration data */
-#define IWM_OTP_LOW_IMAGE_SIZE_FAMILY_7000	(16 * 512 * sizeof(uint16_t)) /* 16 KB */
-#define IWM_OTP_LOW_IMAGE_SIZE_FAMILY_8000	(32 * 512 * sizeof(uint16_t)) /* 32 KB */
-#define IWM_OTP_LOW_IMAGE_SIZE_FAMILY_9000	IWM_OTP_LOW_IMAGE_SIZE_FAMILY_8000
-
+#define IWX_OTP_LOW_IMAGE_SIZE_FAMILY_22000	(32 * 512 * sizeof(uint16_t)) /* 32 KB */
 
 /**
  * enum iwl_nvm_type - nvm formats
  * @IWM_NVM: the regular format
  * @IWM_NVM_EXT: extended NVM format
- * @IWM_NVM_SDP: NVM format used by 3168 series
  */
-/* ported from openbsd */
 enum iwx_nvm_type {
 	IWM_NVM,
 	IWM_NVM_EXT,
-//	IWX_NVM_SDP,
 };
 
 /**
@@ -136,32 +127,24 @@ enum iwx_nvm_type {
  */
 struct iwx_cfg {
 	const char *name;
+	// sc_fwname in iwx_softc @ openbsd
 	const char *fw_name;
 	uint16_t eeprom_size;
 	enum iwm_device_family device_family;
 	int host_interrupt_operation_mode;
-	int mqrx_supported;
+//	int mqrx_supported;
+	int  tx_with_siso_diversity;
+	int max_tfd_queue_size;
 	int integrated;
 	uint8_t nvm_hw_section_num;
-	int apmg_wake_up_wa;
+	int apmg_wake_up_wa; // todo: candidate for removal from if_iwx, see comment
 	enum iwx_nvm_type nvm_type;
 };
 
 /*
  * This list declares the config structures for all devices.
  */
-#if 0
-extern const struct iwm_cfg iwm7260_cfg;
-extern const struct iwm_cfg iwm3160_cfg;
-extern const struct iwm_cfg iwm3165_cfg;
-extern const struct iwm_cfg iwm3168_cfg;
-extern const struct iwm_cfg iwm7265_cfg;
-extern const struct iwm_cfg iwm7265d_cfg;
-extern const struct iwm_cfg iwm8260_cfg;
-extern const struct iwm_cfg iwm8265_cfg;
-extern const struct iwm_cfg iwm9560_cfg;
-extern const struct iwm_cfg iwm9260_cfg;
-#endif
-extern const struct iwx_cfg iwx22500_cfg;
+extern const struct iwx_cfg iwx22000_cfg;
+// extern const struct iwx_cfg iwx22560_cfg;
 
 #endif /* __IWM_CONFIG_H__ */

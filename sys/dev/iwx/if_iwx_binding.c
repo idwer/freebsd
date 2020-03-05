@@ -179,6 +179,11 @@ iwx_binding_cmd(struct iwx_softc *sc, uint32_t action,
 		cmd.macs[i] = htole32(IWX_FW_CMD_ID_AND_COLOR(data->ids[i],
 							      data->colors[i]));
 
+	if (IEEE80211_IS_CHAN_2GHZ(phyctxt->channel))
+		cmd.lmac_id = htole32(IWX_LMAC_24G_INDEX);
+	else
+		cmd.lmac_id = htole32(IWX_LMAC_5G_INDEX);
+
 	status = 0;
 	ret = iwx_send_cmd_pdu_status(sc, IWX_BINDING_CONTEXT_CMD,
 	    sizeof(cmd), &cmd, &status);

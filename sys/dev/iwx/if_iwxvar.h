@@ -138,8 +138,7 @@ struct iwx_tx_radiotap_header {
 	 (1 << IEEE80211_RADIOTAP_RATE) |				\
 	 (1 << IEEE80211_RADIOTAP_CHANNEL))
 
-
-#define IWX_UCODE_SECTION_MAX 16
+#define IWX_UCODE_SECTION_MAX 39
 
 /**
  * enum iwm_ucode_type
@@ -160,25 +159,53 @@ enum iwx_ucode_type {
 };
 
 struct iwx_ucode_capabilities {
+	// sc_capa_max_probe_len in iwx_softc @ openbsd
 	uint32_t max_probe_length;
+	// sc_capa_n_scan_channels @ openbsd
 	uint32_t n_scan_channels;
+	// sc_capa_flags @ openbsd
 	uint32_t flags;
+	// sc_ucode_api @ openbsd
 	uint8_t enabled_api[howmany(IWX_NUM_UCODE_TLV_API, NBBY)];
+	// sc_enabled_capa in iwx_softc 
 	uint8_t enabled_capa[howmany(IWX_NUM_UCODE_TLV_CAPA, NBBY)];
 };
 
 /* one for each uCode image (inst/data, init/runtime/wowlan) */
-struct iwx_fw_desc {
+struct iwx_fw_desc { // iwx_fw_onesect in openbsd
 	const void *data;	/* vmalloc'ed data */
 	uint32_t len;		/* size in bytes */
 	uint32_t offset;	/* offset in the device */
 };
 
-struct iwx_fw_img {
-	struct iwx_fw_desc sec[IWX_UCODE_SECTION_MAX];
+struct iwx_fw_img { // iwx_fw_sects in openbsd
+	struct iwx_fw_desc fw_sect[IWX_UCODE_SECTION_MAX];
 	int fw_count;
 	int is_dual_cpus;
-	uint32_t paging_mem_size;
+//	uint32_t paging_mem_size;
+};
+
+//#define IWX_FW_DBG_CONF_MAX 32
+
+//enum iwx_fw_dbg_trigger {
+	// todo: import other entries from openbsd
+	/* must be last */
+//	IWX_FW_DBG_TRIGGER_MAX,
+//};
+
+struct iwx_fw_dbg {
+	/* FW debug data parsed for driver usage */
+	int dbg_dest_tlv_init;
+	uint8_t *dbg_dest_ver;
+	uint8_t n_dest_reg;
+	struct iwx_fw_dbg_dest_tlv_v1 *dbg_dest_tlv_v1;
+
+	struct iwx_fw_dbg_conf_tlv *dbg_conf_tlv[IWX_FW_DBG_CONF_MAX];
+	size_t dbg_conf_tlv_len[IWX_FW_DBG_CONF_MAX];
+	struct iwx_fw_dbg_trigger_tlv *dbg_trigger_tlv[IWX_FW_DBG_TRIGGER_MAX];
+	size_t dbg_trigger_tlv_len[IWX_FW_DBG_TRIGGER_MAX];
+	struct iwx_fw_dbg_mem_seg_tlv *dbg_mem_tlv;
+	size_t n_mem_tlv;
 };
 
 struct iwx_fw_info {
@@ -192,6 +219,7 @@ struct iwx_fw_info {
 	uint32_t phy_config;
 	uint8_t valid_tx_ant;
 	uint8_t valid_rx_ant;
+	struct iwx_fw_dbg dbg;
 };
 
 struct iwx_nvm_data {
@@ -209,11 +237,11 @@ struct iwx_nvm_data {
 	uint8_t radio_cfg_dash;
 	uint8_t radio_cfg_pnum;
 	uint8_t valid_tx_ant, valid_rx_ant;
+// todo: sync with openbsd
 #define IWX_NUM_CHANNELS	51
 	uint16_t nvm_version;
 	uint8_t max_tx_pwr_half_dbm;
 
-	boolean_t lar_enabled;
 	uint16_t nvm_ch_flags[];
 };
 
@@ -250,24 +278,16 @@ struct iwx_dma_info {
 	bus_size_t		size;
 };
 
-/**
- * struct iwm_fw_paging
- * @fw_paging_block: dma memory info
- * @fw_paging_size: page size
- */
-struct iwx_fw_paging {
-	struct iwx_dma_info fw_paging_block;
-	uint32_t fw_paging_size;
-};
+#define	IWX_DEFAULT_QUEUE_SIZE	IWX_TFD_QUEUE_SIZE_MAX
 
-#define IWX_TX_RING_COUNT	256
+#define IWX_TX_RING_COUNT	IWX_DEFAULT_QUEUE_SIZE
 #define IWX_TX_RING_LOMARK	192
 #define IWX_TX_RING_HIMARK	224
 
 struct iwx_tx_data {
 	bus_dmamap_t		map;
 	bus_addr_t		cmd_paddr;
-	bus_addr_t		scratch_paddr;
+//	bus_addr_t		scratch_paddr;
 	struct mbuf		*m;
 	struct iwx_node 	*in;
 	int			done;
@@ -276,16 +296,17 @@ struct iwx_tx_data {
 struct iwx_tx_ring {
 	struct iwx_dma_info	desc_dma;
 	struct iwx_dma_info	cmd_dma;
-	struct iwx_tfd		*desc;
+	struct iwx_dma_info	bc_tbl;
+	struct iwx_tfh_tfd	*desc;
 	struct iwx_device_cmd	*cmd;
 	bus_dma_tag_t		data_dmat;
 	struct iwx_tx_data	data[IWX_TX_RING_COUNT];
 	int			qid;
 	int			queued;
 	int			cur;
+	// openbsd adds: int			tail;
 };
 
-#define IWX_RX_LEGACY_RING_COUNT	256
 #define IWX_RX_MQ_RING_COUNT		512
 
 #define IWX_RBUF_SIZE		4096
@@ -304,11 +325,15 @@ struct iwx_rx_ring {
 	struct iwx_dma_info	buf_dma;
 	void			*desc;
 	struct iwx_rb_status	*stat;
-	struct iwx_rx_data	data[512];
+	struct iwx_rx_data	data[IWX_RX_MQ_RING_COUNT];
 	bus_dmamap_t		spare_map;	/* for iwm_rx_addbuf() */
 	bus_dma_tag_t           data_dmat;
 	int			cur;
 };
+
+#define IWX_ERROR_EVENT_TABLE_LMAC1	(1 << 0)
+#define IWX_ERROR_EVENT_TABLE_LMAC2	(1 << 1)
+#define IWX_ERROR_EVENT_TABLE_UMAC	(1 << 2)
 
 #define IWM_CMD_RESP_MAX PAGE_SIZE
 
@@ -323,7 +348,7 @@ struct iwx_rx_ring {
 enum IWX_CMD_MODE {
 	IWX_CMD_SYNC		= 0,
 	IWX_CMD_ASYNC		= (1 << 0),
-	IWX_CMD_WANT_SKB	= (1 << 1),
+	IWX_CMD_WANT_SKB	= (1 << 1), // IWX_CMD_WANT_RESP @ openbsd
 	IWX_CMD_SEND_IN_RFKILL	= (1 << 2),
 };
 enum iwm_hcmd_dataflag {
@@ -348,6 +373,20 @@ struct iwm_bf_data {
 	int ba_enabled;		/* abort	*/
 	int ave_beacon_signal;
 	int last_cqm_event;
+};
+
+/**
+ * struct iwx_self_init_dram - dram data used by self init process
+ * @fw: lmac and umac dram data
+ * @fw_cnt: total number of items in array
+ * @paging: paging dram data
+ * @paging_cnt: total number of items in array
+ */
+struct iwx_self_init_dram {
+	struct iwx_dma_info *fw;
+	int fw_cnt;
+	struct iwx_dma_info *paging;
+	int paging_cnt;
 };
 
 struct iwx_vap {
@@ -387,12 +426,13 @@ struct iwx_node {
 	/* status "bits" */
 	int			in_assoc;
 
-	struct iwx_lq_cmd	in_lq;
+//	struct iwx_lq_cmd	in_lq;
 };
 #define IWX_NODE(_ni)		((struct iwx_node *)(_ni))
 
 #define IWX_STATION_ID 0
 #define IWX_AUX_STA_ID 1
+// #define IWX_MONITOR_STA_ID 2
 
 #define	IWX_DEFAULT_MACID	0
 #define	IWX_DEFAULT_COLOR	0
@@ -415,18 +455,25 @@ struct iwx_softc {
 	struct ieee80211_ratectl_tx_status sc_txs;
 
 	int			sc_flags;
+/* these #defines are shared with iwm */
 #define IWX_FLAG_USE_ICT	(1 << 0)
 #define IWX_FLAG_HW_INITED	(1 << 1)
 #define IWX_FLAG_STOPPED	(1 << 2)
 #define IWX_FLAG_RFKILL		(1 << 3)
-#define IWX_FLAG_BUSY		(1 << 4)
-#define IWX_FLAG_SCANNING	(1 << 5)
-#define IWX_FLAG_SCAN_RUNNING	(1 << 6)
+#define IWX_FLAG_BUSY		(1 << 4) // IWX_FLAG_MAC_ACTIVE
+#define IWX_FLAG_SCANNING	(1 << 5) // IWX_FLAG_BINDING_ACTIVE
+#define IWX_FLAG_SCAN_RUNNING	(1 << 6) // IWX_FLAG_STA_ACTIVE
 #define IWX_FLAG_TE_ACTIVE	(1 << 7)
+// new
+#define IWX_FLAG_HW_ERR		(1 << 8)
+#define IWX_FLAG_SHUTDOWN	(1 << 9)
+#define IWX_FLAG_BGSCAN		(1 << 10)
 
 	struct intr_config_hook sc_preinit_hook;
 	struct callout		sc_watchdog_to;
+#ifdef HAS_LED
 	struct callout		sc_led_blink_to;
+#endif
 
 	struct task		init_task;
 
@@ -454,16 +501,22 @@ struct iwx_softc {
 	int			sc_hw_rev;
 	int			sc_hw_id;
 
-	struct iwx_dma_info	kw_dma;
+//	struct iwx_dma_info	kw_dma;
 	struct iwx_dma_info	fw_dma;
+
+	struct iwx_dma_info	ctxt_info_dma;
+	struct iwx_self_init_dram init_dram;
 
 	int			sc_fw_chunk_done;
 
-	enum iwx_ucode_type	cur_ucode;
+//	enum iwx_ucode_type	cur_ucode;
 	int			ucode_loaded;
 	char			sc_fwver[32];
 
-	char			sc_fw_mcc[3];
+//	char			sc_fw_mcc[3];
+#define IWX_MAX_FW_CMD_VERSIONS	64
+	struct iwx_fw_cmd_version cmd_versions[IWX_MAX_FW_CMD_VERSIONS];
+	int n_cmd_versions;
 
 	int			sc_intmask;
 
@@ -479,13 +532,14 @@ struct iwx_softc {
 	int			sc_generation;
 
 	struct iwx_fw_info	sc_fw;
+	struct iwx_dma_info	fw_mon;
 	struct iwx_tlv_calib_ctrl sc_default_calib[IWX_UCODE_TYPE_MAX];
 
 	const struct iwx_cfg	*cfg;
-	struct iwx_nvm_data	*nvm_data;
-	struct iwx_phy_db	*sc_phy_db;
+	struct iwx_nvm_data	*nvm_data; // sc_nvm?
+//	struct iwx_phy_db	*sc_phy_db;
 
-	struct iwm_bf_data	sc_bf;
+	struct iwm_bf_data	sc_bf; // does the openbsd driver actually use iwx_bf_data?
 
 	int			sc_tx_timer;
 
@@ -509,7 +563,8 @@ struct iwx_softc {
 	/* phy contexts.  we only use the first one */
 	struct iwx_phy_ctxt	sc_phyctxt[IWX_NUM_PHY_CTX];
 
-	struct iwx_notif_statistics_v10 sc_stats;
+	// todo: update struct to v10
+	struct iwx_notif_statistics_v13 sc_stats;
 	int			sc_noise;
 
 	struct iwx_rx_radiotap_header sc_rxtap;
@@ -522,18 +577,24 @@ struct iwx_softc {
 	int			cmd_hold_nic_awake;
 
 	/* Firmware status */
-	uint32_t		error_event_table[2];
+	// uc_lmac_error_event_table in iwx_softc @ openbsd
+	uint32_t		lmac_error_event_table[2];
+	// uc_log_event_table in iwx_softc @ openbsd
 	uint32_t		log_event_table;
+	// uc_umac_error_event_table in iwx_softc @ openbsd
 	uint32_t		umac_error_event_table;
 	int			support_umac_log;
+	int			error_event_table_tlv_status;
 
+#ifdef not_in_iwx
 	/*
 	 * Paging parameters - All of the parameters should be set by the
 	 * opmode when paging is enabled
 	 */
-	struct iwx_fw_paging	fw_paging_db[IWX_NUM_OF_FW_PAGING_BLOCKS];
-	uint16_t		num_of_paging_blk;
-	uint16_t		num_of_pages_in_last_blk;
+//	struct iwx_fw_paging	fw_paging_db[IWX_NUM_OF_FW_PAGING_BLOCKS];
+//	uint16_t		num_of_paging_blk;
+//	uint16_t		num_of_pages_in_last_blk;
+#endif
 
 	boolean_t		last_ebs_successful;
 
