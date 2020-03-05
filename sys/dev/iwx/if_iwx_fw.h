@@ -78,18 +78,13 @@
 #ifndef	__IF_IWM_FW_H__
 #define	__IF_IWM_FW_H__
 
-/*
- * Block paging calculations
+/**
+ * struct iwx_nvm_access_complete_cmd - NVM_ACCESS commands are completed
+ * @reserved: reserved
  */
-#define IWX_PAGE_2_EXP_SIZE 12 /* 4K == 2^12 */
-#define IWX_FW_PAGING_SIZE (1 << IWX_PAGE_2_EXP_SIZE) /* page size is 4KB */
-#define IWX_PAGE_PER_GROUP_2_EXP_SIZE 3
-/* 8 pages per group */
-#define IWX_NUM_OF_PAGE_PER_GROUP (1 << IWX_PAGE_PER_GROUP_2_EXP_SIZE)
-/* don't change, support only 32KB size */
-#define IWX_PAGING_BLOCK_SIZE (IWX_NUM_OF_PAGE_PER_GROUP * IWX_FW_PAGING_SIZE)
-/* 32K == 2^15 */
-#define IWX_BLOCK_2_EXP_SIZE (IWX_PAGE_2_EXP_SIZE + IWX_PAGE_PER_GROUP_2_EXP_SIZE)
+struct iwx_nvm_access_complete_cmd {
+	uint32_t reserved;
+} __packed; /* NVM_ACCESS_COMPLETE_CMD_API_S_VER_1 */
 
 /*
  * Image paging calculations

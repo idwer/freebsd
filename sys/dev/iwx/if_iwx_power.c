@@ -202,13 +202,6 @@ iwx_beacon_filter_send_cmd(struct iwx_softc *sc,
 }
 
 static void
-iwx_beacon_filter_set_cqm_params(struct iwx_softc *sc,
-	struct iwx_vap *ivp, struct iwx_beacon_filter_cmd *cmd)
-{
-	cmd->ba_enable_beacon_abort = htole32(sc->sc_bf.ba_enabled);
-}
-
-static void
 iwx_power_log(struct iwx_softc *sc, struct iwx_mac_power_cmd *cmd)
 {
 	IWX_DPRINTF(sc, IWX_DEBUG_PWRSAVE | IWX_DEBUG_CMD,
@@ -345,7 +338,6 @@ _iwx_enable_beacon_filter(struct iwx_softc *sc, struct iwx_vap *ivp,
 {
 	int ret;
 
-	iwx_beacon_filter_set_cqm_params(sc, ivp, cmd);
 	ret = iwx_beacon_filter_send_cmd(sc, cmd);
 
 	if (!ret)
@@ -360,6 +352,7 @@ iwx_enable_beacon_filter(struct iwx_softc *sc, struct iwx_vap *ivp)
 	struct iwx_beacon_filter_cmd cmd = {
 		IWX_BF_CMD_CONFIG_DEFAULTS,
 		.bf_enable_beacon_filter = htole32(1),
+		.ba_enable_beacon_abort = htole32(sc->sc_bf.ba_enabled),
 	};
 
 	return _iwx_enable_beacon_filter(sc, ivp, &cmd);

@@ -127,6 +127,7 @@ __FBSDID("$FreeBSD$");
 #include <dev/iwx/if_iwx_util.h>
 #include <dev/iwx/if_iwx_fw.h>
 
+/* assume iwx_free_fw_paging() is identical to iwx_ctxt_info_free_paging() */
 void
 iwx_free_fw_paging(struct iwx_softc *sc)
 {

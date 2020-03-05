@@ -219,7 +219,7 @@ iwx_read_mem(struct iwx_softc *sc, uint32_t addr, void *buf, int dwords)
 	if (iwx_nic_lock(sc)) {
 		IWX_WRITE(sc, IWX_HBUS_TARG_MEM_RADDR, addr);
 		for (offs = 0; offs < dwords; offs++)
-			vals[offs] = IWX_READ(sc, IWX_HBUS_TARG_MEM_RDAT);
+			vals[offs] = le32toh(IWX_READ(sc, IWX_HBUS_TARG_MEM_RDAT));
 		iwx_nic_unlock(sc);
 	} else {
 		ret = EBUSY;
@@ -283,11 +283,6 @@ iwx_nic_lock(struct iwx_softc *sc)
 
 	IWX_SETBITS(sc, IWX_CSR_GP_CNTRL,
 	    IWX_CSR_GP_CNTRL_REG_FLAG_MAC_ACCESS_REQ);
-
-#if 0
-	if (sc->cfg->device_family >= IWM_DEVICE_FAMILY_8000)
-		DELAY(2);
-#endif
 
 	if (iwx_poll_bit(sc, IWX_CSR_GP_CNTRL,
 	    IWX_CSR_GP_CNTRL_REG_VAL_MAC_ACCESS_EN,
@@ -377,7 +372,6 @@ iwx_check_rfkill(struct iwx_softc *sc)
 
 	return rv;
 }
-
 
 #define IWX_HW_READY_TIMEOUT 50
 int
@@ -482,14 +476,6 @@ iwx_apm_init(struct iwx_softc *sc)
 
 	IWX_DPRINTF(sc, IWX_DEBUG_RESET, "iwx apm start\n");
 
-#if 0
-	/* Disable L0S exit timer (platform NMI Work/Around) */
-	if (sc->cfg->device_family < IWM_DEVICE_FAMILY_8000) {
-		IWM_SETBITS(sc, IWM_CSR_GIO_CHICKEN_BITS,
-		    IWM_CSR_GIO_CHICKEN_BITS_REG_BIT_DIS_L0S_EXIT_TIMER);
-	}
-#endif
-
 	/*
 	 * Disable L0s without affecting L1;
 	 *  don't wait for ICH L0s (ICH bug W/A)
@@ -508,13 +494,6 @@ iwx_apm_init(struct iwx_softc *sc)
 	    IWX_CSR_HW_IF_CONFIG_REG_BIT_HAP_WAKE_L1A);
 
 	iwx_apm_config(sc);
-
-#if 0 /* not for 7k/8k */
-	/* Configure analog phase-lock-loop before activating to D0A */
-	if (trans->cfg->base_params->pll_cfg_val)
-		IWM_SETBITS(trans, IWM_CSR_ANA_PLL_CFG,
-		    trans->cfg->base_params->pll_cfg_val);
-#endif
 
 	/*
 	 * Set "initialization complete" bit to move adapter from
@@ -535,63 +514,6 @@ iwx_apm_init(struct iwx_softc *sc)
 		error = ETIMEDOUT;
 		goto out;
 	}
-
-#if 0
-	if (sc->cfg->host_interrupt_operation_mode) {
-		/*
-		 * This is a bit of an abuse - This is needed for 7260 / 3160
-		 * only check host_interrupt_operation_mode even if this is
-		 * not related to host_interrupt_operation_mode.
-		 *
-		 * Enable the oscillator to count wake up time for L1 exit. This
-		 * consumes slightly more power (100uA) - but allows to be sure
-		 * that we wake up from L1 on time.
-		 *
-		 * This looks weird: read twice the same register, discard the
-		 * value, set a bit, and yet again, read that same register
-		 * just to discard the value. But that's the way the hardware
-		 * seems to like it.
-		 */
-		if (iwm_nic_lock(sc)) {
-			iwm_read_prph(sc, IWM_OSC_CLK);
-			iwm_read_prph(sc, IWM_OSC_CLK);
-			iwm_nic_unlock(sc);
-		}
-		iwm_set_bits_prph(sc, IWM_OSC_CLK, IWM_OSC_CLK_FORCE_CONTROL);
-		if (iwm_nic_lock(sc)) {
-			iwm_read_prph(sc, IWM_OSC_CLK);
-			iwm_read_prph(sc, IWM_OSC_CLK);
-			iwm_nic_unlock(sc);
-		}
-	}
-
-	/*
-	 * Enable DMA clock and wait for it to stabilize.
-	 *
-	 * Write to "CLK_EN_REG"; "1" bits enable clocks, while "0" bits
-	 * do not disable clocks.  This preserves any hardware bits already
-	 * set by default in "CLK_CTRL_REG" after reset.
-	 */
-	if (sc->cfg->device_family == IWM_DEVICE_FAMILY_7000) {
-		if (iwm_nic_lock(sc)) {
-			iwm_write_prph(sc, IWM_APMG_CLK_EN_REG,
-			    IWM_APMG_CLK_VAL_DMA_CLK_RQT);
-			iwm_nic_unlock(sc);
-		}
-		DELAY(20);
-
-		/* Disable L1-Active */
-		iwm_set_bits_prph(sc, IWM_APMG_PCIDEV_STT_REG,
-		    IWM_APMG_PCIDEV_STT_VAL_L1_ACT_DIS);
-
-		/* Clear the interrupt in APMG if the NIC is in RFKILL */
-		if (iwm_nic_lock(sc)) {
-			iwm_write_prph(sc, IWM_APMG_RTC_INT_STT_REG,
-			    IWM_APMG_RTC_INT_STT_RFKILL);
-			iwm_nic_unlock(sc);
-		}
-	}
-#endif
 
  out:
 	if (error)
@@ -631,6 +553,108 @@ iwx_apm_stop(struct iwx_softc *sc)
 	IWX_DPRINTF(sc, IWX_DEBUG_TRANS, "%s: iwx apm stop\n", __func__);
 }
 
+#ifdef from_openbsd
+void
+iwx_init_msix_hw(struct iwx_softc *sc)
+{
+	iwx_conf_msix_hw(sc, 0);
+
+	if (!sc->sc_msix)
+		return;
+
+	sc->sc_fh_init_mask = ~IWX_READ(sc, IWX_CSR_MSIX_FH_INT_MASK_AD);
+	sc->sc_fh_mask = sc->sc_fh_init_mask;
+	sc->sc_hw_init_mask = ~IWX_READ(sc, IWX_CSR_MSIX_HW_INT_MASK_AD);
+	sc->sc_hw_mask = sc->sc_hw_init_mask;
+}
+void
+iwx_conf_msix_hw(struct iwx_softc *sc, int stopped)
+{
+	int vector = 0;
+
+	if (!sc->sc_msix) {
+		/* Newer chips default to MSIX. */
+		if (!stopped && iwx_nic_lock(sc)) {
+			iwx_write_prph(sc, IWX_UREG_CHICK,
+			    IWX_UREG_CHICK_MSI_ENABLE);
+			iwx_nic_unlock(sc);
+		}
+		return;
+	}
+
+	if (!stopped && iwx_nic_lock(sc)) {
+		iwx_write_prph(sc, IWX_UREG_CHICK, IWX_UREG_CHICK_MSIX_ENABLE);
+		iwx_nic_unlock(sc);
+	}
+
+	/* Disable all interrupts */
+	IWX_WRITE(sc, IWX_CSR_MSIX_FH_INT_MASK_AD, ~0);
+	IWX_WRITE(sc, IWX_CSR_MSIX_HW_INT_MASK_AD, ~0);
+
+	/* Map fallback-queue (command/mgmt) to a single vector */
+	IWX_WRITE_1(sc, IWX_CSR_MSIX_RX_IVAR(0),
+	    vector | IWX_MSIX_NON_AUTO_CLEAR_CAUSE);
+	/* Map RSS queue (data) to the same vector */
+	IWX_WRITE_1(sc, IWX_CSR_MSIX_RX_IVAR(1),
+	    vector | IWX_MSIX_NON_AUTO_CLEAR_CAUSE);
+
+	/* Enable the RX queues cause interrupts */
+	IWX_CLRBITS(sc, IWX_CSR_MSIX_FH_INT_MASK_AD,
+	    IWX_MSIX_FH_INT_CAUSES_Q0 | IWX_MSIX_FH_INT_CAUSES_Q1);
+
+	/* Map non-RX causes to the same vector */
+	IWX_WRITE_1(sc, IWX_CSR_MSIX_IVAR(IWX_MSIX_IVAR_CAUSE_D2S_CH0_NUM),
+	    vector | IWX_MSIX_NON_AUTO_CLEAR_CAUSE);
+	IWX_WRITE_1(sc, IWX_CSR_MSIX_IVAR(IWX_MSIX_IVAR_CAUSE_D2S_CH1_NUM),
+	    vector | IWX_MSIX_NON_AUTO_CLEAR_CAUSE);
+	IWX_WRITE_1(sc, IWX_CSR_MSIX_IVAR(IWX_MSIX_IVAR_CAUSE_S2D),
+	    vector | IWX_MSIX_NON_AUTO_CLEAR_CAUSE);
+	IWX_WRITE_1(sc, IWX_CSR_MSIX_IVAR(IWX_MSIX_IVAR_CAUSE_FH_ERR),
+	    vector | IWX_MSIX_NON_AUTO_CLEAR_CAUSE);
+	IWX_WRITE_1(sc, IWX_CSR_MSIX_IVAR(IWX_MSIX_IVAR_CAUSE_REG_ALIVE),
+	    vector | IWX_MSIX_NON_AUTO_CLEAR_CAUSE);
+	IWX_WRITE_1(sc, IWX_CSR_MSIX_IVAR(IWX_MSIX_IVAR_CAUSE_REG_WAKEUP),
+	    vector | IWX_MSIX_NON_AUTO_CLEAR_CAUSE);
+	IWX_WRITE_1(sc, IWX_CSR_MSIX_IVAR(IWX_MSIX_IVAR_CAUSE_REG_IML),
+	    vector | IWX_MSIX_NON_AUTO_CLEAR_CAUSE);
+	IWX_WRITE_1(sc, IWX_CSR_MSIX_IVAR(IWX_MSIX_IVAR_CAUSE_REG_CT_KILL),
+	    vector | IWX_MSIX_NON_AUTO_CLEAR_CAUSE);
+	IWX_WRITE_1(sc, IWX_CSR_MSIX_IVAR(IWX_MSIX_IVAR_CAUSE_REG_RF_KILL),
+	    vector | IWX_MSIX_NON_AUTO_CLEAR_CAUSE);
+	IWX_WRITE_1(sc, IWX_CSR_MSIX_IVAR(IWX_MSIX_IVAR_CAUSE_REG_PERIODIC),
+	    vector | IWX_MSIX_NON_AUTO_CLEAR_CAUSE);
+	IWX_WRITE_1(sc, IWX_CSR_MSIX_IVAR(IWX_MSIX_IVAR_CAUSE_REG_SW_ERR),
+	    vector | IWX_MSIX_NON_AUTO_CLEAR_CAUSE);
+	IWX_WRITE_1(sc, IWX_CSR_MSIX_IVAR(IWX_MSIX_IVAR_CAUSE_REG_SCD),
+	    vector | IWX_MSIX_NON_AUTO_CLEAR_CAUSE);
+	IWX_WRITE_1(sc, IWX_CSR_MSIX_IVAR(IWX_MSIX_IVAR_CAUSE_REG_FH_TX),
+	    vector | IWX_MSIX_NON_AUTO_CLEAR_CAUSE);
+	IWX_WRITE_1(sc, IWX_CSR_MSIX_IVAR(IWX_MSIX_IVAR_CAUSE_REG_HW_ERR),
+	    vector | IWX_MSIX_NON_AUTO_CLEAR_CAUSE);
+	IWX_WRITE_1(sc, IWX_CSR_MSIX_IVAR(IWX_MSIX_IVAR_CAUSE_REG_HAP),
+	    vector | IWX_MSIX_NON_AUTO_CLEAR_CAUSE);
+
+	/* Enable non-RX causes interrupts */
+	IWX_CLRBITS(sc, IWX_CSR_MSIX_FH_INT_MASK_AD,
+	    IWX_MSIX_FH_INT_CAUSES_D2S_CH0_NUM |
+	    IWX_MSIX_FH_INT_CAUSES_D2S_CH1_NUM |
+	    IWX_MSIX_FH_INT_CAUSES_S2D |
+	    IWX_MSIX_FH_INT_CAUSES_FH_ERR);
+	IWX_CLRBITS(sc, IWX_CSR_MSIX_HW_INT_MASK_AD,
+	    IWX_MSIX_HW_INT_CAUSES_REG_ALIVE |
+	    IWX_MSIX_HW_INT_CAUSES_REG_WAKEUP |
+	    IWX_MSIX_HW_INT_CAUSES_REG_IML |
+	    IWX_MSIX_HW_INT_CAUSES_REG_CT_KILL |
+	    IWX_MSIX_HW_INT_CAUSES_REG_RF_KILL |
+	    IWX_MSIX_HW_INT_CAUSES_REG_PERIODIC |
+	    IWX_MSIX_HW_INT_CAUSES_REG_SW_ERR |
+	    IWX_MSIX_HW_INT_CAUSES_REG_SCD |
+	    IWX_MSIX_HW_INT_CAUSES_REG_FH_TX |
+	    IWX_MSIX_HW_INT_CAUSES_REG_HW_ERR |
+	    IWX_MSIX_HW_INT_CAUSES_REG_HAP);
+}
+#endif
+
 /* iwlwifi pcie/trans.c */
 int
 iwx_start_hw(struct iwx_softc *sc)
@@ -641,15 +665,17 @@ iwx_start_hw(struct iwx_softc *sc)
 		return error;
 
 	/* Reset the entire device */
-	IWX_WRITE(sc, IWX_CSR_RESET, IWX_CSR_RESET_REG_FLAG_SW_RESET);
+	IWX_SETBITS(sc, IWX_CSR_RESET, IWX_CSR_RESET_REG_FLAG_SW_RESET);
 	DELAY(5000);
 
 	if ((error = iwx_apm_init(sc)) != 0)
 		return error;
 
 	/* On newer chipsets MSI is disabled by default. */
+#ifdef not_in_iwx
+	// todo: replace this with iwx_init_msix_hw() - import it first
 	if (sc->cfg->mqrx_supported)
-		iwx_write_prph(sc, IWX_UREG_CHICK, IWX_UREG_CHICK_MSI_ENABLE);
+		iwx_write_prph(sc, IWX_UREG_CHICK, IWX_UREG_CHICK_MSI_ENABLE);#endif
 
 	iwx_enable_rfkill_int(sc);
 	iwx_check_rfkill(sc);
@@ -666,6 +692,7 @@ iwx_set_pwr(struct iwx_softc *sc)
 }
 
 /* iwlwifi pcie/rx.c */
+// is this iwx_disable_rx_dma() from openbsd?
 int
 iwx_pcie_rx_stop(struct iwx_softc *sc)
 {
@@ -673,23 +700,19 @@ iwx_pcie_rx_stop(struct iwx_softc *sc)
 
 	ret = 0;
 	if (iwx_nic_lock(sc)) {
-		if (sc->cfg->mqrx_supported) {
-			iwx_write_prph(sc, IWX_RFH_RXF_DMA_CFG, 0);
-			ret = iwx_poll_prph(sc, IWX_RFH_GEN_STATUS,
-					IWX_RXF_DMA_IDLE, IWX_RXF_DMA_IDLE, 1000);
-		} else {
-			IWX_WRITE(sc, IWX_FH_MEM_RCSR_CHNL0_CONFIG_REG, 0);
-			ret = iwx_poll_bit(sc, IWX_FH_MEM_RSSR_RX_STATUS_REG,
-					IWX_FH_RSSR_CHNL0_RX_STATUS_CHNL_IDLE,
-					IWX_FH_RSSR_CHNL0_RX_STATUS_CHNL_IDLE,
-					1000);
+		iwx_write_prph(sc, IWX_RFH_RXF_DMA_CFG, 0);
+		for (ntries = 0; ntries < 1000; ntries++) {
+			if (iwx_read_prph(sc, IWX_RFH_GEN_STATUS) &
+			    IWX_RXF_DMA_IDLE)
+				break;
+			DELAY(10);
 		}
 		iwx_nic_unlock(sc);
 	}
 	return ret;
 }
 
-	void
+void
 iwx_pcie_clear_cmd_in_flight(struct iwx_softc *sc)
 {
 	if (!sc->cfg->apmg_wake_up_wa)

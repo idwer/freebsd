@@ -122,13 +122,16 @@ extern	int iwx_dma_contig_alloc(bus_dma_tag_t tag, struct iwx_dma_info *dma,
 				 bus_size_t size, bus_size_t alignment);
 extern	void iwx_dma_contig_free(struct iwx_dma_info *);
 
-extern	int iwx_send_lq_cmd(struct iwx_softc *sc, struct iwx_lq_cmd *lq,
-				boolean_t init);
+//extern	int iwx_send_lq_cmd(struct iwx_softc *sc, struct iwx_lq_cmd *lq,
+//				boolean_t init);
 
 extern	boolean_t iwx_rx_diversity_allowed(struct iwx_softc *sc);
 
 extern	uint8_t iwx_ridx2rate(struct ieee80211_rateset *rs, int ridx);
-extern	int iwx_enable_txq(struct iwx_softc *sc, int sta_id, int qid, int fifo);
+// extern	int iwx_enable_txq(struct iwx_softc *sc, int sta_id, int qid, int fifo);
+/* this is a verbatim copy/paste from openbsd */
+extern int iwx_enable_txq(struct iwx_softc *sc, int sta_id, int qid, int tid,
+    int num_slots);
 extern	int iwx_flush_tx_path(struct iwx_softc *sc, uint32_t tfd_msk,
 				  uint32_t flags);
 
