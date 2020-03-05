@@ -209,26 +209,21 @@ iwx_update_sta(struct iwx_softc *sc, struct iwx_node *in)
 	return iwx_sta_send_to_fw(sc, in, TRUE);
 }
 
-static int
-iwx_add_int_sta_common(struct iwx_softc *sc, struct iwx_int_sta *sta,
-    const uint8_t *addr, uint16_t mac_id, uint16_t color)
+int
+iwx_drain_sta(struct iwx_softc *sc, struct iwx_vap *ivp, boolean_t drain)
 {
-	struct iwx_add_sta_cmd cmd;
+	struct iwx_add_sta_cmd cmd = {};
 	int ret;
 	uint32_t status;
 
-	memset(&cmd, 0, sizeof(cmd));
-	cmd.sta_id = sta->sta_id;
-	cmd.mac_id_n_color = htole32(IWX_FW_CMD_ID_AND_COLOR(mac_id, color));
-	if (sta->sta_id == IWX_AUX_STA_ID && sc->cfg->mqrx_supported)
-		cmd.station_type = IWX_STA_AUX_ACTIVITY;
+	cmd.mac_id_n_color =
+	    htole32(IWX_FW_CMD_ID_AND_COLOR(ivp->id, ivp->color));
+	cmd.sta_id = IWX_STATION_ID;
+	cmd.add_modify = IWX_STA_MODE_MODIFY;
+	cmd.station_flags = drain ? htole32(IWX_STA_FLG_DRAIN_FLOW) : 0;
+	cmd.station_flags_msk = htole32(IWX_STA_FLG_DRAIN_FLOW);
 
-	cmd.tfd_queue_msk = htole32(sta->tfd_queue_msk);
-	cmd.tid_disable_tx = htole16(0xffff);
-
-	if (addr)
-		IEEE80211_ADDR_COPY(cmd.addr, addr);
-
+	status = IWX_ADD_STA_SUCCESS;
 	ret = iwx_send_cmd_pdu_status(sc, IWX_ADD_STA,
 					  iwx_add_sta_cmd_size(sc),
 					  &cmd, &status);
@@ -237,38 +232,16 @@ iwx_add_int_sta_common(struct iwx_softc *sc, struct iwx_int_sta *sta,
 
 	switch (status & IWX_ADD_STA_STATUS_MASK) {
 	case IWX_ADD_STA_SUCCESS:
-		IWX_DPRINTF(sc, IWX_DEBUG_NODE, "Internal station added.\n");
-		return 0;
+		IWX_DPRINTF(sc, IWX_DEBUG_NODE,
+		    "Frames for staid %d will drained in fw\n", IWX_STATION_ID);
+		break;
 	default:
 		ret = EIO;
 		device_printf(sc->sc_dev,
-		    "Add internal station failed, status=0x%x\n", status);
+		    "Couldn't drain frames for staid %d\n", IWX_STATION_ID);
 		break;
 	}
-	return ret;
-}
 
-int
-iwx_add_aux_sta(struct iwx_softc *sc)
-{
-	int ret;
-
-	sc->sc_aux_sta.sta_id = IWX_AUX_STA_ID;
-	sc->sc_aux_sta.tfd_queue_msk = (1 << IWX_AUX_QUEUE);
-
-	/* Map Aux queue to fifo - needs to happen before adding Aux station */
-	ret = iwx_enable_txq(sc, IWX_AUX_STA_ID, IWX_AUX_QUEUE,
-	    IWX_TX_FIFO_MCAST);
-	if (ret)
-		return ret;
-
-	ret = iwx_add_int_sta_common(sc, &sc->sc_aux_sta, NULL,
-					 IWX_MAC_INDEX_AUX, 0);
-
-	if (ret) {
-		memset(&sc->sc_aux_sta, 0, sizeof(sc->sc_aux_sta));
-		sc->sc_aux_sta.sta_id = IWX_STATION_COUNT;
-	}
 	return ret;
 }
 
@@ -338,4 +311,67 @@ iwx_rm_sta_id(struct iwx_softc *sc, struct ieee80211vap *vap)
 	/* XXX wait until STA is drained */
 
 	return iwx_rm_sta_common(sc);
+}
+
+static int
+iwx_add_int_sta_common(struct iwx_softc *sc, struct iwx_int_sta *sta,
+    const uint8_t *addr, uint16_t mac_id, uint16_t color)
+{
+	struct iwx_add_sta_cmd cmd;
+	int ret;
+	uint32_t status;
+
+	memset(&cmd, 0, sizeof(cmd));
+	cmd.sta_id = sta->sta_id;
+	cmd.mac_id_n_color = htole32(IWX_FW_CMD_ID_AND_COLOR(mac_id, color));
+	if (sta->sta_id == IWX_AUX_STA_ID && sc->cfg->mqrx_supported)
+		cmd.station_type = IWX_STA_AUX_ACTIVITY;
+
+	cmd.tfd_queue_msk = htole32(sta->tfd_queue_msk);
+	cmd.tid_disable_tx = htole16(0xffff);
+
+	if (addr)
+		IEEE80211_ADDR_COPY(cmd.addr, addr);
+
+	ret = iwx_send_cmd_pdu_status(sc, IWX_ADD_STA,
+					  iwx_add_sta_cmd_size(sc),
+					  &cmd, &status);
+	if (ret)
+		return ret;
+
+	switch (status & IWX_ADD_STA_STATUS_MASK) {
+	case IWX_ADD_STA_SUCCESS:
+		IWX_DPRINTF(sc, IWX_DEBUG_NODE, "Internal station added.\n");
+		return 0;
+	default:
+		ret = EIO;
+		device_printf(sc->sc_dev,
+		    "Add internal station failed, status=0x%x\n", status);
+		break;
+	}
+	return ret;
+}
+
+int
+iwx_add_aux_sta(struct iwx_softc *sc)
+{
+	int ret;
+
+	sc->sc_aux_sta.sta_id = IWX_AUX_STA_ID;
+	sc->sc_aux_sta.tfd_queue_msk = (1 << IWX_AUX_QUEUE);
+
+	/* Map Aux queue to fifo - needs to happen before adding Aux station */
+	ret = iwx_enable_txq(sc, IWX_AUX_STA_ID, IWX_AUX_QUEUE,
+	    IWX_TX_FIFO_MCAST);
+	if (ret)
+		return ret;
+
+	ret = iwx_add_int_sta_common(sc, &sc->sc_aux_sta, NULL,
+					 IWX_MAC_INDEX_AUX, 0);
+
+	if (ret) {
+		memset(&sc->sc_aux_sta, 0, sizeof(sc->sc_aux_sta));
+		sc->sc_aux_sta.sta_id = IWX_STATION_COUNT;
+	}
+	return ret;
 }

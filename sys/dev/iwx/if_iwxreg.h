@@ -5719,14 +5719,14 @@ enum iwm_scan_subcmd_ids {
  *	driver and can be updated by fw upon reception of action frames.
  * @IWM_STA_FLG_MFP_EN: Management Frame Protection
  */
-enum iwm_sta_flags {
+enum iwx_sta_flags {
 	IWM_STA_FLG_REDUCED_TX_PWR_CTRL	= (1 << 3),
 	IWM_STA_FLG_REDUCED_TX_PWR_DATA	= (1 << 6),
 
 	IWM_STA_FLG_DISABLE_TX		= (1 << 4),
 
 	IWM_STA_FLG_PS			= (1 << 8),
-	IWM_STA_FLG_DRAIN_FLOW		= (1 << 12),
+	IWX_STA_FLG_DRAIN_FLOW		= (1 << 12),
 	IWM_STA_FLG_PAN			= (1 << 13),
 	IWM_STA_FLG_CLASS_AUTH		= (1 << 14),
 	IWM_STA_FLG_CLASS_ASSOC		= (1 << 15),
@@ -5821,7 +5821,7 @@ enum iwm_sta_modify_flag {
 	IWM_STA_MODIFY_QUEUES			= (1 << 7),
 };
 
-#define IWM_STA_MODE_MODIFY	1
+#define IWX_STA_MODE_MODIFY	1
 
 /**
  * enum iwm_sta_sleep_flag - type of sleep of the station
