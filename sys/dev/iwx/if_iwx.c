@@ -348,7 +348,8 @@ static int	iwx_rx_tx_cmd_single(struct iwx_softc *,
                                          struct iwx_rx_packet *,
 				         struct iwx_node *);
 static void	iwx_rx_tx_cmd(struct iwx_softc *, struct iwx_rx_packet *);
-static void	iwx_cmd_done(struct iwx_softc *, struct iwx_rx_packet *);
+// static void	iwx_cmd_done(struct iwx_softc *, struct iwx_rx_packet *);
+static void	iwx_cmd_done(struct iwx_softc *, struct iwx_rx_packet *, int code);
 // static const struct iwx_rate *
 //	iwx_tx_fill_cmd(struct iwx_softc *, struct iwx_node *,
 //			struct mbuf *, struct iwx_tx_cmd *);
@@ -1404,7 +1405,6 @@ iwx_read_firmware(struct iwx_softc *sc)
 			break;
 		}
 
-		case IWX_UCODE_TLV_CMD_VERSIONS:
 		case IWX_UCODE_TLV_SDIO_ADMA_ADDR:
 		case IWX_UCODE_TLV_FW_GSCAN_CAPA:
 			/* ignore, not used by current driver */
@@ -1472,11 +1472,11 @@ iwx_read_firmware(struct iwx_softc *sc)
 			    le32toh(((const uint32_t *)tlv_data)[2]));
 			break;
 
+#if 0
 		case IWX_UCODE_TLV_FW_DBG_DEST: {
 			struct iwx_fw_dbg_dest_tlv_v1 *dest_v1 = NULL;
 
-// silence compiler
-//			fw->dbg.dbg_dest_ver = (uint8_t *)tlv_data;
+			fw->dbg.dbg_dest_ver = (uint8_t *)tlv_data;
 			if (*fw->dbg.dbg_dest_ver != 0) {
 				error = EINVAL;
 				goto parse_out;
@@ -1486,8 +1486,7 @@ iwx_read_firmware(struct iwx_softc *sc)
 				break;
 			fw->dbg.dbg_dest_tlv_init = true;
 
-// silence compiler
-//			dest_v1 = (void *)tlv_data;
+			dest_v1 = (void *)tlv_data;
 			fw->dbg.dbg_dest_tlv_v1 = dest_v1;
 			fw->dbg.n_dest_reg = tlv_len -
 			    offsetof(struct iwx_fw_dbg_dest_tlv_v1, reg_ops);
@@ -1497,11 +1496,10 @@ iwx_read_firmware(struct iwx_softc *sc)
 		}
 
 		case IWX_UCODE_TLV_FW_DBG_CONF: {
-// silence compiler
-//			struct iwx_fw_dbg_conf_tlv *conf = (void *)tlv_data;
+			struct iwx_fw_dbg_conf_tlv *conf = (void *)tlv_data;
 
-			if (!fw->dbg_dest_tlv_init ||
-			    conf->id >= nitems(fw->dbg_conf_tlv) ||
+			if (!fw->dbg.dbg_dest_tlv_init ||
+			    conf->id >= nitems(fw->dbg.dbg_conf_tlv) ||
 			    fw->dbg_conf_tlv[conf->id] != NULL)
 				break;
 
@@ -1546,6 +1544,7 @@ iwx_read_firmware(struct iwx_softc *sc)
 				IWX_ERROR_EVENT_TABLE_LMAC1;
 			break;
 		}
+#endif
 
 		case IWX_UCODE_TLV_FW_MEM_SEG:
 		break;
@@ -1556,11 +1555,11 @@ iwx_read_firmware(struct iwx_softc *sc)
 				tlv_len *= sizeof(struct iwx_fw_cmd_version);
 			}
 			if (sc->n_cmd_versions != 0) {
-				err = EINVAL;
+				error = EINVAL;
 				goto parse_out;
 			}
 			if (tlv_len > sizeof(sc->cmd_versions)) {
-				err = EINVAL;
+				error = EINVAL;
 				goto parse_out;
 			}
 			memcpy(&sc->cmd_versions[0], tlv_data, tlv_len);
@@ -1645,7 +1644,7 @@ static int
 iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
 {
 	bus_size_t size;
-	int i, err;
+	int i, error;
 
 	ring->cur = 0;
 
@@ -1671,11 +1670,10 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
 	ring->stat = ring->stat_dma.vaddr;
 
 	size = IWX_RX_MQ_RING_COUNT * sizeof(uint32_t);
-	err = iwx_dma_contig_alloc(sc->sc_dmat, &ring->used_desc_dma,
+	error = iwx_dma_contig_alloc(sc->sc_dmat, &ring->used_desc_dma,
 	    size, 256);
-	if (err) {
-		device_printf("%s: could not allocate RX ring DMA memory\n",
-		    sc->sc_dev);
+	if (error) {
+		device_printf(sc->sc_dev, "could not allocate RX ring DMA memory\n");
 		goto fail;
 	}
 
@@ -1825,7 +1823,7 @@ iwx_alloc_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring, int qid)
 	ring->cmd = ring->cmd_dma.vaddr;
 
 	/* FW commands may require more mapped space than packets. */
-	if (qid == IWX_CMD_QUEUE) {
+	if (qid == IWX_DQA_CMD_QUEUE) {
 		maxsize = IWX_RBUF_SIZE;
 		nsegments = 1;
 	} else {
@@ -1893,7 +1891,7 @@ iwx_reset_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring)
 	ring->cur = 0;
 //	ring->tali = 0;
 
-	if (ring->qid == IWX_CMD_QUEUE && sc->cmd_hold_nic_awake)
+	if (ring->qid == IWX_DQA_CMD_QUEUE && sc->cmd_hold_nic_awake)
 		iwx_pcie_clear_cmd_in_flight(sc);
 }
 
@@ -2141,7 +2139,7 @@ iwx_enable_txq(struct iwx_softc *sc, int sta_id, int qid, int tid,
 	struct iwx_tx_queue_cfg_rsp *resp;
 	struct iwx_host_cmd hcmd = {
 		.id = IWX_SCD_QUEUE_CFG,
-		.flags = IWX_CMD_WANT_RESP,
+		.flags = IWX_CMD_WANT_SKB,
 		.resp_pkt_len = sizeof(*pkt) + sizeof(*resp),
 	};
 	struct iwx_tx_ring *ring = &sc->txq[qid];
@@ -3984,6 +3982,8 @@ iwx_rx_tx_cmd(struct iwx_softc *sc, struct iwx_rx_packet *pkt)
  * Process a "command done" firmware notification.  This is where we wakeup
  * processes waiting for a synchronous command completion.
  * from if_iwn
+ *
+ * The OpenBSD port brought 'int code'.
  */
 static void
 iwx_cmd_done(struct iwx_softc *sc, struct iwx_rx_packet *pkt, int code)
@@ -5952,7 +5952,7 @@ iwx_handle_rxb(struct iwx_softc *sc, struct mbuf *m)
 		 * is actually the upper byte of a two-byte field.
 		 */
 		if (!(qid & (1 << 7)))
-			iwx_cmd_done(sc, pkt);
+			iwx_cmd_done(sc, pkt, 0);
 
 		offset = nextoff;
 	}
