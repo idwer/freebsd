@@ -397,26 +397,26 @@ iwm_fill_probe_req(struct iwm_softc *sc, struct iwm_scan_probe_req *preq)
 }
 
 int
-iwm_config_umac_scan(struct iwm_softc *sc)
+iwx_config_umac_scan(struct iwx_softc *sc)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ieee80211vap *vap = TAILQ_FIRST(&ic->ic_vaps);
 
-	struct iwm_scan_config *scan_config;
+	struct iwx_scan_config *scan_config;
 	int ret, j, nchan;
 	size_t cmd_size;
 	struct ieee80211_channel *c;
-	struct iwm_host_cmd hcmd = {
-		.id = iwm_cmd_id(IWM_SCAN_CFG_CMD, IWM_ALWAYS_LONG_GROUP, 0),
-		.flags = IWM_CMD_SYNC,
+	struct iwx_host_cmd hcmd = {
+		.id = iwx_cmd_id(IWX_SCAN_CFG_CMD, IWX_ALWAYS_LONG_GROUP, 0),
+		.flags = IWX_CMD_SYNC,
 	};
-	static const uint32_t rates = (IWM_SCAN_CONFIG_RATE_1M |
-	    IWM_SCAN_CONFIG_RATE_2M | IWM_SCAN_CONFIG_RATE_5M |
-	    IWM_SCAN_CONFIG_RATE_11M | IWM_SCAN_CONFIG_RATE_6M |
-	    IWM_SCAN_CONFIG_RATE_9M | IWM_SCAN_CONFIG_RATE_12M |
-	    IWM_SCAN_CONFIG_RATE_18M | IWM_SCAN_CONFIG_RATE_24M |
-	    IWM_SCAN_CONFIG_RATE_36M | IWM_SCAN_CONFIG_RATE_48M |
-	    IWM_SCAN_CONFIG_RATE_54M);
+	static const uint32_t rates = (IWX_SCAN_CONFIG_RATE_1M |
+	    IWX_SCAN_CONFIG_RATE_2M | IWX_SCAN_CONFIG_RATE_5M |
+	    IWX_SCAN_CONFIG_RATE_11M | IWX_SCAN_CONFIG_RATE_6M |
+	    IWX_SCAN_CONFIG_RATE_9M | IWX_SCAN_CONFIG_RATE_12M |
+	    IWX_SCAN_CONFIG_RATE_18M | IWX_SCAN_CONFIG_RATE_24M |
+	    IWX_SCAN_CONFIG_RATE_36M | IWX_SCAN_CONFIG_RATE_48M |
+	    IWX_SCAN_CONFIG_RATE_54M);
 
 	cmd_size = sizeof(*scan_config) + sc->sc_fw.ucode_capa.n_scan_channels;
 
@@ -424,26 +424,28 @@ iwm_config_umac_scan(struct iwm_softc *sc)
 	if (scan_config == NULL)
 		return ENOMEM;
 
-	scan_config->tx_chains = htole32(iwm_get_valid_tx_ant(sc));
-	scan_config->rx_chains = htole32(iwm_get_valid_rx_ant(sc));
+	scan_config->tx_chains = htole32(iwx_get_valid_tx_ant(sc));
+	scan_config->rx_chains = htole32(iwx_get_valid_rx_ant(sc));
 	scan_config->legacy_rates = htole32(rates |
-	    IWM_SCAN_CONFIG_SUPPORTED_RATE(rates));
+	    IWX_SCAN_CONFIG_SUPPORTED_RATE(rates));
 
 	/* These timings correspond to iwlwifi's UNASSOC scan. */
 	scan_config->dwell_active = 10;
 	scan_config->dwell_passive = 110;
 	scan_config->dwell_fragmented = 44;
 	scan_config->dwell_extended = 90;
-	scan_config->out_of_channel_time = htole32(0);
-	scan_config->suspend_time = htole32(0);
+	scan_config->out_of_channel_time[IWX_SCAN_LB_LMAC_IDX] = htole32(0);
+	scan_config->out_of_channel_time[IWX_SCAN_HB_LMAC_IDX] = htole32(0);
+	scan_config->suspend_time[IWX_SCAN_LB_LMAC_IDX] = htole32(0);
+	scan_config->suspend_time[IWX_SCAN_HB_LMAC_IDX] = htole32(0);
 
 	IEEE80211_ADDR_COPY(scan_config->mac_addr,
 	    vap ? vap->iv_myaddr : ic->ic_macaddr);
 
 	scan_config->bcast_sta_id = sc->sc_aux_sta.sta_id;
-	scan_config->channel_flags = IWM_CHANNEL_FLAG_EBS |
-	    IWM_CHANNEL_FLAG_ACCURATE_EBS | IWM_CHANNEL_FLAG_EBS_ADD |
-	    IWM_CHANNEL_FLAG_PRE_SCAN_PASSIVE2ACTIVE;
+	scan_config->channel_flags = IWX_CHANNEL_FLAG_EBS |
+	    IWX_CHANNEL_FLAG_ACCURATE_EBS | IWX_CHANNEL_FLAG_EBS_ADD |
+	    IWX_CHANNEL_FLAG_PRE_SCAN_PASSIVE2ACTIVE;
 
 	for (nchan = j = 0;
 	    j < ic->ic_nchans && nchan < sc->sc_fw.ucode_capa.n_scan_channels;
@@ -455,32 +457,32 @@ iwm_config_umac_scan(struct iwm_softc *sc)
 		 * Catch other channels, in case we have 900MHz channels or
 		 * something in the chanlist.
 		 */
-		if (iwm_scan_skip_channel(c))
+		if (iwx_scan_skip_channel(c))
 			continue;
 		scan_config->channel_array[nchan++] =
 		    ieee80211_mhz2ieee(c->ic_freq, 0);
 	}
 
-	scan_config->flags = htole32(IWM_SCAN_CONFIG_FLAG_ACTIVATE |
-	    IWM_SCAN_CONFIG_FLAG_ALLOW_CHUB_REQS |
-	    IWM_SCAN_CONFIG_FLAG_SET_TX_CHAINS |
-	    IWM_SCAN_CONFIG_FLAG_SET_RX_CHAINS |
-	    IWM_SCAN_CONFIG_FLAG_SET_AUX_STA_ID |
-	    IWM_SCAN_CONFIG_FLAG_SET_ALL_TIMES |
-	    IWM_SCAN_CONFIG_FLAG_SET_LEGACY_RATES |
-	    IWM_SCAN_CONFIG_FLAG_SET_MAC_ADDR |
-	    IWM_SCAN_CONFIG_FLAG_SET_CHANNEL_FLAGS|
-	    IWM_SCAN_CONFIG_N_CHANNELS(nchan) |
-	    IWM_SCAN_CONFIG_FLAG_CLEAR_FRAGMENTED);
+	scan_config->flags = htole32(IWX_SCAN_CONFIG_FLAG_ACTIVATE |
+	    IWX_SCAN_CONFIG_FLAG_ALLOW_CHUB_REQS |
+	    IWX_SCAN_CONFIG_FLAG_SET_TX_CHAINS |
+	    IWX_SCAN_CONFIG_FLAG_SET_RX_CHAINS |
+	    IWX_SCAN_CONFIG_FLAG_SET_AUX_STA_ID |
+	    IWX_SCAN_CONFIG_FLAG_SET_ALL_TIMES |
+	    IWX_SCAN_CONFIG_FLAG_SET_LEGACY_RATES |
+	    IWX_SCAN_CONFIG_FLAG_SET_MAC_ADDR |
+	    IWX_SCAN_CONFIG_FLAG_SET_CHANNEL_FLAGS|
+	    IWX_SCAN_CONFIG_N_CHANNELS(nchan) |
+	    IWX_SCAN_CONFIG_FLAG_CLEAR_FRAGMENTED);
 
 	hcmd.data[0] = scan_config;
 	hcmd.len[0] = cmd_size;
 
-	IWM_DPRINTF(sc, IWM_DEBUG_SCAN, "Sending UMAC scan config\n");
+	IWX_DPRINTF(sc, IWX_DEBUG_SCAN, "Sending UMAC scan config\n");
 
-	ret = iwm_send_cmd(sc, &hcmd);
+	ret = iwx_send_cmd(sc, &hcmd);
 	if (!ret)
-		IWM_DPRINTF(sc, IWM_DEBUG_SCAN,
+		IWX_DPRINTF(sc, IWX_DEBUG_SCAN,
 		    "UMAC scan config was sent successfully\n");
 
 	free(scan_config, M_DEVBUF);
@@ -558,14 +560,19 @@ iwx_umac_scan(struct iwm_softc *sc)
 
 	general_flags = IWM_UMAC_SCAN_GEN_FLAGS_PASS_ALL |
 	    IWM_UMAC_SCAN_GEN_FLAGS_ITER_COMPLETE;
+	/* guesswork, see openbsd sys/dev/pci/if_iwx.c:5002 */
+	if (iwm_fw_has_api(sc, IWM_UCODE_TLV_API_ADAPTIVE_DWELL_V2))
+		general_flags |= IWX_UMAC_SCAN_GEN_FLAGS2_ALLOW_CHNL_REORDER;
 	if (!iwm_fw_has_api(sc, IWM_UCODE_TLV_API_ADAPTIVE_DWELL))
 		general_flags |= IWM_UMAC_SCAN_GEN_FLAGS_EXTENDED_DWELL;
 	if (iwm_rrm_scan_needed(sc))
 		general_flags |= IWM_UMAC_SCAN_GEN_FLAGS_RRM_ENABLED;
+#if 0 // guesswork
 	if (nssid != 0)
 		general_flags |= IWM_UMAC_SCAN_GEN_FLAGS_PRE_CONNECT;
 	else
-		general_flags |= IWM_UMAC_SCAN_GEN_FLAGS_PASSIVE;
+#endif
+	general_flags |= IWM_UMAC_SCAN_GEN_FLAGS_PASSIVE;
 
 	channel_flags = 0;
 	if (iwm_scan_use_ebs(sc))
