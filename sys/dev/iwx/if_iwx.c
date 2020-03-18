@@ -2140,7 +2140,7 @@ iwx_enable_txq(struct iwx_softc *sc, int sta_id, int qid, int tid,
 	struct iwx_host_cmd hcmd = {
 		.id = IWX_SCD_QUEUE_CFG,
 		.flags = IWX_CMD_WANT_SKB,
-		.resp_pkt_len = sizeof(*pkt) + sizeof(*resp),
+//		.resp_pkt_len = sizeof(*pkt) + sizeof(*resp),
 	};
 	struct iwx_tx_ring *ring = &sc->txq[qid];
 	int err, fwqid;
@@ -2199,11 +2199,86 @@ out:
 	return err;
 }
 
+#if 0
 static void
 iwx_trans_pcie_fw_alive(struct iwx_softc *sc)
 {
 	iwx_ict_reset(sc);
 	iwx_ctxt_info_free(sc);
+}
+#endif
+static int
+iwx_trans_pcie_fw_alive(struct iwx_softc *sc, uint32_t scd_base_addr)
+{
+	int error, chnl;
+
+	int clear_dwords = (IWX_SCD_TRANS_TBL_MEM_UPPER_BOUND -
+	    IWX_SCD_CONTEXT_MEM_LOWER_BOUND) / sizeof(uint32_t);
+
+	if (!iwx_nic_lock(sc))
+		return EBUSY;
+
+	iwx_ict_reset(sc);
+
+	sc->scd_base_addr = iwx_read_prph(sc, IWX_SCD_SRAM_BASE_ADDR);
+	if (scd_base_addr != 0 &&
+	    scd_base_addr != sc->scd_base_addr) {
+		device_printf(sc->sc_dev,
+		    "%s: sched addr mismatch: alive: 0x%x prph: 0x%x\n",
+		    __func__, sc->scd_base_addr, scd_base_addr);
+	}
+
+	iwx_nic_unlock(sc);
+
+	/* reset context data, TX status and translation data */
+	error = iwx_write_mem(sc,
+	    sc->scd_base_addr + IWX_SCD_CONTEXT_MEM_LOWER_BOUND,
+	    NULL, clear_dwords);
+	if (error)
+		return EBUSY;
+
+	if (!iwx_nic_lock(sc))
+		return EBUSY;
+
+	/* Set physical address of TX scheduler rings (1KB aligned). */
+	iwx_write_prph(sc, IWX_SCD_DRAM_BASE_ADDR, sc->sched_dma.paddr >> 10);
+
+	iwx_write_prph(sc, IWX_SCD_CHAINEXT_EN, 0);
+
+	iwx_nic_unlock(sc);
+
+	/* enable command channel */
+//	error = iwx_enable_txq(sc, 0 /* unused */, IWX_CMD_QUEUE, 7);
+	error = iwx_enable_txq(sc, IWX_AUX_STA_ID, IWX_DQA_AUX_QUEUE, IWX_MGMT_TID, IWX_TX_RING_COUNT);
+	if (error)
+		return error;
+
+	if (!iwx_nic_lock(sc))
+		return EBUSY;
+
+	iwx_write_prph(sc, IWX_SCD_TXFACT, 0xff);
+
+	/* Enable DMA channels. */
+	for (chnl = 0; chnl < IWX_FH_TCSR_CHNL_NUM; chnl++) {
+		IWX_WRITE(sc, IWX_FH_TCSR_CHNL_TX_CONFIG_REG(chnl),
+		    IWX_FH_TCSR_TX_CONFIG_REG_VAL_DMA_CHNL_ENABLE |
+		    IWX_FH_TCSR_TX_CONFIG_REG_VAL_DMA_CREDIT_ENABLE);
+	}
+
+	IWX_SETBITS(sc, IWX_FH_TX_CHICKEN_BITS_REG,
+	    IWX_FH_TX_CHICKEN_BITS_SCD_AUTO_RETRY_EN);
+
+	iwx_nic_unlock(sc);
+
+#ifdef not_in_iwx
+	/* Enable L1-Active */
+	if (sc->cfg->device_family < IWX_DEVICE_FAMILY_8000) {
+		iwx_clear_bits_prph(sc, IWX_APMG_PCIDEV_STT_REG,
+		    IWX_APMG_PCIDEV_STT_VAL_L1_ACT_DIS);
+	}
+#endif
+
+	return error;
 }
 
 /*
@@ -2369,7 +2444,7 @@ iwx_nvm_read_section(struct iwx_softc *sc,
 
 /* NVM offsets (in words) definitions */
 enum iwx_nvm_offsets {
-	IWM_NVM_VERSION = 0,
+	IWX_NVM_VERSION = 0,
 //};
 
 //enum iwx_8000_nvm_offsets {
@@ -2386,7 +2461,9 @@ enum iwx_nvm_offsets {
 //	IWX_RADIO_CFG_8000 = 0,
 	IWX_RADIO_CFG = 0,
 //	IWM_SKU_8000 = 2,
+	IWX_SKU = 2,
 //	IWX_N_HW_ADDRS_8000 = 3,
+	IWX_N_HW_ADDRS = 3,
 
 	/* NVM REGULATORY -Section offset (in words) definitions */
 	IWX_NVM_CHANNELS = 0,
@@ -2629,7 +2706,7 @@ iwx_get_nvm_version(const struct iwx_softc *sc, const uint16_t *nvm_sw)
 	/* todo: tune to match/support family 22000 */
 
 		return le32_to_cpup((const uint32_t *)(nvm_sw +
-						IWM_NVM_VERSION_8000));
+						IWX_NVM_VERSION));
 }
 
 static int
@@ -2642,7 +2719,7 @@ iwx_get_radio_cfg(const struct iwx_softc *sc, const uint16_t *nvm_sw,
 #endif
 	/* todo: tune to match/support family 22000 */
 
-        return le32_to_cpup((const uint32_t *)(phy_sku + IWX_RADIO_CFG_8000));
+        return le32_to_cpup((const uint32_t *)(phy_sku + IWX_RADIO_CFG));
 }
 
 static int
@@ -2650,7 +2727,7 @@ iwx_get_n_hw_addrs(const struct iwx_softc *sc, const uint16_t *nvm_sw)
 {
 	int n_hw_addr;
 
-#if 0
+#ifdef not_in_iwx
 	if (sc->cfg->device_family < IWM_DEVICE_FAMILY_8000)
 		return le16_to_cpup(nvm_sw + IWM_N_HW_ADDRS);
 #endif
@@ -2664,7 +2741,7 @@ static void
 iwx_set_radio_cfg(const struct iwx_softc *sc, struct iwx_nvm_data *data,
 		  uint32_t radio_cfg)
 {
-#if 0
+#ifdef not_in_iwx
 	if (sc->cfg->device_family < IWM_DEVICE_FAMILY_8000) {
 		data->radio_cfg_type = IWM_NVM_RF_CFG_TYPE_MSK(radio_cfg);
 		data->radio_cfg_step = IWM_NVM_RF_CFG_STEP_MSK(radio_cfg);
@@ -2698,7 +2775,7 @@ iwx_set_hw_address(struct iwx_softc *sc, struct iwx_nvm_data *data,
 		iwm_set_hw_address_from_csr(sc, data);
 	} else
 #endif
-#if 0
+#ifdef not_in_iwx
 		if (sc->cfg->device_family < IWM_DEVICE_FAMILY_8000) {
 		const uint8_t *hw_addr = (const uint8_t *)(nvm_hw + IWM_HW_ADDR);
 
@@ -2711,6 +2788,7 @@ iwx_set_hw_address(struct iwx_softc *sc, struct iwx_nvm_data *data,
 		data->hw_addr[5] = hw_addr[4];
 	} else {
 #endif
+		/* todo: merge the function below into this function  */
 		iwx_set_hw_address_family_8000(sc, data, mac_override, nvm_hw);
 //	}
 
@@ -2732,7 +2810,7 @@ iwx_parse_nvm_data(struct iwx_softc *sc,
 	uint32_t sku, radio_cfg;
 //	uint16_t lar_config;
 
-#if 0
+#ifdef not_in_iwx
 	if (sc->cfg->device_family < IWM_DEVICE_FAMILY_8000) {
 		data = malloc(sizeof(*data) +
 		    IWM_NUM_CHANNELS * sizeof(uint16_t),
@@ -2778,7 +2856,7 @@ iwx_parse_nvm_data(struct iwx_softc *sc,
 		return NULL;
 	}
 
-#if 0
+#ifdef not_in_iwx
 	if (sc->cfg->device_family == IWM_DEVICE_FAMILY_7000) {
 		memcpy(data->nvm_ch_flags, sc->cfg->nvm_type == IWM_NVM_SDP ?
 		    &regulatory[0] : &nvm_sw[IWM_NVM_CHANNELS],
@@ -3029,7 +3107,7 @@ iwx_load_firmware(struct iwx_softc *sc)
 
 	sc->sc_uc.uc_intr = 0;
 
-	fws = &sc->sc_fw.fw_sects[IWX_UCODE_TYPE_REGULAR];
+	fws = &sc->sc_fw.fw_sects[IWX_UCODE_REGULAR];
 	err = iwx_ctxt_info_init(sc, fws);
 	if (err) {
 		device_printf(sc->sc_dev, "could not init context info\n");
@@ -3217,9 +3295,9 @@ iwx_send_phy_cfg_cmd(struct iwx_softc *sc)
 	/* Set parameters */
 	phy_cfg_cmd.phy_cfg = htole32(iwx_get_phy_config(sc));
 	phy_cfg_cmd.calib_control.event_trigger =
-	    sc->sc_default_calib[IWX_UCODE_TYPE_REGULAR].event_trigger;
+	    sc->sc_default_calib[IWX_UCODE_REGULAR].event_trigger;
 	phy_cfg_cmd.calib_control.flow_trigger =
-	    sc->sc_default_calib[IWX_UCODE_TYPE_REGULAR].flow_trigger;
+	    sc->sc_default_calib[IWX_UCODE_REGULAR].flow_trigger;
 
 	IWX_DPRINTF(sc, IWX_DEBUG_CMD | IWX_DEBUG_RESET,
 	    "Sending Phy CFG command: 0x%x\n", phy_cfg_cmd.phy_cfg);
@@ -3233,6 +3311,7 @@ iwx_alive_fn(struct iwx_softc *sc, struct iwx_rx_packet *pkt, void *data)
 	struct iwx_alive_data *alive_data = data;
 	struct iwx_alive_resp_v3 *palive3;
 	struct iwx_alive_resp *palive;
+	struct iwx_alive_resp_v4 *palive;
 	struct iwx_umac_alive *umac;
 	struct iwx_lmac_alive *lmac1;
 	struct iwx_lmac_alive *lmac2 = NULL;
@@ -4593,6 +4672,15 @@ iwx_auth(struct ieee80211vap *vap, struct iwx_softc *sc)
 	}
 	sc->sc_firmware_state = 3;
 
+	/* ported from openbsd */
+	err = iwx_enable_data_tx_queues(sc);
+	if (err)
+		goto rm_sta;
+
+	err = iwx_clear_statistics(sc);
+	if (err)
+		goto rm_sta;
+
 	/*
 	 * Prevent the FW from wandering off channel during association
 	 * by "protecting" the session with a time event.
@@ -4602,6 +4690,12 @@ iwx_auth(struct ieee80211vap *vap, struct iwx_softc *sc)
 	iwx_protect_session(sc, iv, duration, 500 /* XXX magic number */, TRUE);
 
 	error = 0;
+
+rm_sta:
+	if (generation == sc->sc_generation) {
+		iwx_rm_sta_cmd(sc, in);
+		sc->sc_flags &= ~IWX_FLAG_STA_ACTIVE;
+	}
 out:
 	if (error != 0)
 		iv->iv_auth = 0;
@@ -5053,6 +5147,7 @@ iwx_send_update_mcc_cmd(struct iwx_softc *sc, const char *alpha2)
 	int n_channels;
 	uint16_t mcc;
 #endif
+#ifdef not_in_iwx
 	int resp_v2 = iwx_fw_has_capa(sc, IWX_UCODE_TLV_CAPA_LAR_SUPPORT_V2);
 
 	if (!iwx_is_lar_supported(sc)) {
@@ -5060,6 +5155,7 @@ iwx_send_update_mcc_cmd(struct iwx_softc *sc, const char *alpha2)
 		    __func__);
 		return 0;
 	}
+#endif
 
 	memset(&mcc_cmd, 0, sizeof(mcc_cmd));
 	mcc_cmd.mcc = htole16(alpha2[0] << 8 | alpha2[1]);
@@ -5068,10 +5164,13 @@ iwx_send_update_mcc_cmd(struct iwx_softc *sc, const char *alpha2)
 	else
 		mcc_cmd.source_id = IWX_MCC_SOURCE_OLD_FW;
 
+#ifdef not_in_iwx
 	if (resp_v2)
 		hcmd.len[0] = sizeof(struct iwx_mcc_update_cmd);
 	else
 		hcmd.len[0] = sizeof(struct iwx_mcc_update_cmd_v1);
+#endif
+	hcmd.len[0] = sizeof(struct iwx_mcc_update_cmd);
 
 	IWX_DPRINTF(sc, IWX_DEBUG_LAR,
 	    "send MCC update to FW with '%c%c' src = %d\n",
@@ -5085,6 +5184,7 @@ iwx_send_update_mcc_cmd(struct iwx_softc *sc, const char *alpha2)
 	pkt = hcmd.resp_pkt;
 
 	/* Extract MCC response */
+#ifdef not_in_iwx
 	if (resp_v2) {
 		mcc_resp = (void *)pkt->data;
 		mcc = mcc_resp->mcc;
@@ -5094,6 +5194,10 @@ iwx_send_update_mcc_cmd(struct iwx_softc *sc, const char *alpha2)
 		mcc = mcc_resp_v1->mcc;
 		n_channels =  le32toh(mcc_resp_v1->n_channels);
 	}
+#endif
+	mcc_resp = (void *)pkt->data;
+	mcc = mcc_resp->mcc;
+	n_channels =  le32toh(mcc_resp->n_channels);
 
 	/* W/A for a FW/NVM issue - returns 0x00 for the world domain */
 	if (mcc == 0)
@@ -5166,10 +5270,14 @@ iwx_init_hw(struct iwx_softc *sc)
 	if ((error = iwx_send_phy_db_data(sc->sc_phy_db)) != 0)
 		goto error;
 
+#ifdef not_in_iwx
 	if ((error = iwx_send_phy_cfg_cmd(sc)) != 0) {
 		device_printf(sc->sc_dev, "phy_cfg_cmd failed\n");
 		goto error;
 	}
+#endif
+
+	/* todo: openbsd calls iwx_send_dqa_cmd(sc) */
 
 	/* Add auxiliary station for scanning */
 	if ((error = iwx_add_aux_sta(sc)) != 0) {
@@ -5198,10 +5306,10 @@ iwx_init_hw(struct iwx_softc *sc)
 	if ((error = iwx_send_update_mcc_cmd(sc, "ZZ")) != 0)
 		goto error;
 
-	if (iwx_fw_has_capa(sc, IWX_UCODE_TLV_CAPA_UMAC_SCAN)) {
+//	if (iwx_fw_has_capa(sc, IWX_UCODE_TLV_CAPA_UMAC_SCAN)) {
 		if ((error = iwx_config_umac_scan(sc)) != 0)
 			goto error;
-	}
+//	}
 
 	/* Enable Tx queues. */
 	for (ac = 0; ac < WME_NUM_AC; ac++) {
@@ -5568,7 +5676,8 @@ iwx_nic_error(struct iwx_softc *sc)
 	uint32_t base;
 
 	device_printf(sc->sc_dev, "dumping device error log\n");
-	base = sc->error_event_table[0];
+//	base = sc->error_event_table[0];
+	base = sc->lmac_error_event_table[0];
 	if (base < 0x800000) {
 		device_printf(sc->sc_dev,
 		    "Invalid error log pointer 0x%08x\n", base);
@@ -5774,8 +5883,10 @@ iwx_handle_rxb(struct iwx_softc *sc, struct mbuf *m)
 		case IWX_ALIVE:
 			break;
 
+#ifdef not_in_iwx
 		case IWX_CALIB_RES_NOTIF_PHY_DB:
 			break;
+#endif
 
 		case IWX_STATISTICS_NOTIFICATION:
 			iwx_handle_rx_statistics(sc, pkt);
@@ -5789,6 +5900,7 @@ iwx_handle_rxb(struct iwx_softc *sc, struct mbuf *m)
 			}
 			break;
 
+#ifdef not_in_iwx
 		case IWX_MCC_CHUB_UPDATE_CMD: {
 			struct iwx_mcc_chub_notif *notif;
 			notif = (void *)pkt->data;
@@ -5801,6 +5913,7 @@ iwx_handle_rxb(struct iwx_softc *sc, struct mbuf *m)
 			    notif->source_id, sc->sc_fw_mcc);
 			break;
 		}
+#endif
 
 		case IWX_DTS_MEASUREMENT_NOTIFICATION:
 		case IWX_WIDE_ID(IWX_PHY_OPS_GROUP,
@@ -5832,17 +5945,22 @@ iwx_handle_rxb(struct iwx_softc *sc, struct mbuf *m)
 		case IWX_WIDE_ID(IWX_ALWAYS_LONG_GROUP, IWX_SCAN_CFG_CMD):
 		case IWX_WIDE_ID(IWX_ALWAYS_LONG_GROUP, IWX_SCAN_REQ_UMAC):
 		case IWX_WIDE_ID(IWX_ALWAYS_LONG_GROUP, IWX_SCAN_ABORT_UMAC):
+#ifdef not_in_iwx
 		case IWX_SCAN_OFFLOAD_REQUEST_CMD:
 		case IWX_SCAN_OFFLOAD_ABORT_CMD:
+#endif
 		case IWX_REPLY_BEACON_FILTERING_CMD:
 		case IWX_MAC_PM_POWER_TABLE:
 		case IWX_TIME_QUOTA_CMD:
 		case IWX_REMOVE_STA:
 		case IWX_TXPATH_FLUSH:
+#ifdef not_in_iwx
 		case IWX_LQ_CMD:
 		case IWX_WIDE_ID(IWX_ALWAYS_LONG_GROUP,
 				 IWX_FW_PAGING_BLOCK_CMD):
+#endif
 		case IWX_BT_CONFIG:
+#ifdef not_in_iwx
 		case IWX_REPLY_THERMAL_MNG_BACKOFF:
 			cresp = (void *)pkt->data;
 			if (sc->sc_wantresp == (((qid & ~0x80) << 16) | idx)) {
@@ -5854,10 +5972,12 @@ iwx_handle_rxb(struct iwx_softc *sc, struct mbuf *m)
 		/* ignore */
 		case IWX_PHY_DB_CMD:
 			break;
+#endif
 
 		case IWX_INIT_COMPLETE_NOTIF:
 			break;
 
+#ifdef not_in_iwx
 		case IWX_SCAN_OFFLOAD_COMPLETE:
 			iwx_rx_lmac_scan_complete_notif(sc, pkt);
 			if (sc->sc_flags & IWX_FLAG_SCAN_RUNNING) {
@@ -5871,6 +5991,7 @@ iwx_handle_rxb(struct iwx_softc *sc, struct mbuf *m)
 			notif = (void *)pkt->data;
 			break;
 		}
+#endif
 
 		case IWX_SCAN_COMPLETE_UMAC:
 			iwx_rx_umac_scan_complete_notif(sc, pkt);
@@ -5968,13 +6089,14 @@ iwx_handle_rxb(struct iwx_softc *sc, struct mbuf *m)
 static void
 iwx_notif_intr(struct iwx_softc *sc)
 {
-	int count;
-	uint32_t wreg;
+//	int count;
+//	uint32_t wreg;
 	uint16_t hw;
 
 	bus_dmamap_sync(sc->rxq.stat_dma.tag, sc->rxq.stat_dma.map,
 	    BUS_DMASYNC_POSTREAD);
 
+#ifdef not_in_iwx
 	if (sc->cfg->mqrx_supported) {
 		count = IWX_RX_MQ_RING_COUNT;
 		wreg = IWX_RFH_Q0_FRBDCB_WIDX_TRG;
@@ -5982,6 +6104,7 @@ iwx_notif_intr(struct iwx_softc *sc)
 		count = IWX_RX_LEGACY_RING_COUNT;
 		wreg = IWX_FH_RSCSR_CHNL0_WPTR;
 	}
+#endif
 
 	hw = le16toh(sc->rxq.stat->closed_rb_num) & 0xfff;
 
@@ -6008,8 +6131,8 @@ iwx_notif_intr(struct iwx_softc *sc)
 	 * Seems like the hardware gets upset unless we align
 	 * the write by 8??
 	 */
-	hw = (hw == 0) ? count - 1 : hw - 1;
-	IWX_WRITE(sc, wreg, rounddown2(hw, 8));
+	hw = (hw == 0) ? IWX_RX_MQ_RING_COUNT - 1 : hw - 1;
+	IWX_WRITE(sc, IWX_RFH_Q0_FRBDCB_WIDX_TRG, rounddown2(hw, 8));
 }
 
 static void
@@ -6062,6 +6185,16 @@ iwx_intr(void *arg)
 	}
 
 	IWX_WRITE(sc, IWX_CSR_INT, r1 | ~sc->sc_intmask);
+
+	/* copied from openbsd */
+	if (r1 & IWX_CSR_INT_BIT_ALIVE) {
+		int i;
+
+		/* Firmware has now configured the RFH. */
+		for (i = 0; i < IWX_RX_MQ_RING_COUNT; i++)
+			iwx_update_rx_desc(sc, &sc->rxq, i);
+		IWX_WRITE(sc, IWX_RFH_Q0_FRBDCB_WIDX_TRG, 8);
+	}
 
 	/* Safely ignore these bits for debug checks below */
 	r1 &= ~(IWX_CSR_INT_BIT_ALIVE | IWX_CSR_INT_BIT_SCD);
@@ -6727,17 +6860,23 @@ iwx_scan_start(struct ieee80211com *ic)
 		device_printf(sc->sc_dev,
 		    "%s: Previous scan not completed yet\n", __func__);
 	}
+#ifdef not_in_iwx
 	if (iwx_fw_has_capa(sc, IWX_UCODE_TLV_CAPA_UMAC_SCAN))
 		error = iwx_umac_scan(sc);
 	else
 		error = iwx_lmac_scan(sc);
+#endif
+	error = iwx_umac_scan(sc);
+
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not initiate scan\n");
 		IWX_UNLOCK(sc);
 		ieee80211_cancel_scan(vap);
 	} else {
 		sc->sc_flags |= IWX_FLAG_SCAN_RUNNING;
-//		iwx_led_blink_start(sc);
+#ifdef HAS_LED
+		iwx_led_blink_start(sc);
+#endif
 		IWX_UNLOCK(sc);
 	}
 }

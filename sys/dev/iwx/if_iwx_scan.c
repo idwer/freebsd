@@ -643,6 +643,7 @@ iwx_umac_scan(struct iwm_softc *sc)
 }
 #endif
 
+#ifdef not_in_iwx
 static int
 iwx_lmac_scan_abort(struct iwx_softc *sc)
 {
@@ -674,6 +675,7 @@ iwx_lmac_scan_abort(struct iwx_softc *sc)
 
 	return ret;
 }
+#endif
 
 static int
 iwx_umac_scan_abort(struct iwx_softc *sc)
@@ -692,6 +694,39 @@ iwx_umac_scan_abort(struct iwx_softc *sc)
 				   0, sizeof(cmd), &cmd);
 
 	return ret;
+}
+
+int
+iwx_scan_abort(struct iwx_softc *sc)
+{
+	int err;
+
+	err = iwx_umac_scan_abort(sc);
+	if (err == 0)
+		sc->sc_flags &= ~(IWX_FLAG_SCANNING | IWX_FLAG_BGSCAN);
+	return err;
+}
+
+int
+iwx_enable_data_tx_queues(struct iwx_softc *sc)
+{
+	int err, ac;
+
+	for (ac = 0; ac < EDCA_NUM_AC; ac++) {
+		int qid = ac + IWX_DQA_AUX_QUEUE + 1;
+		/*
+		 * Regular data frames use the "MGMT" TID and queue.
+		 * Other TIDs and queues are reserved for frame aggregation.
+		 */
+		err = iwx_enable_txq(sc, IWX_STATION_ID, qid, IWX_MGMT_TID,
+		    IWX_TX_RING_COUNT);
+		if (err) {
+			device_printf(sc->sc_dev, "could not enable Tx queue %d (error %d)\n", ac, err);
+			return err;
+		}
+	}
+
+	return 0;
 }
 
 int

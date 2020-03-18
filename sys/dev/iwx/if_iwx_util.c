@@ -514,6 +514,29 @@ iwx_send_lq_cmd(struct iwx_softc *sc, struct iwx_lq_cmd *lq, boolean_t init)
 	return iwx_send_cmd(sc, &cmd);
 }
 
+int
+iwx_clear_statistics(struct iwx_softc *sc)
+{
+	struct iwx_statistics_cmd scmd = {
+		.flags = htole32(IWX_STATISTICS_FLG_CLEAR)
+	};
+	struct iwx_host_cmd cmd = {
+		.id = IWX_STATISTICS_CMD,
+		.len[0] = sizeof(scmd),
+		.data[0] = &scmd,
+		.flags = IWX_CMD_WANT_RESP,
+		.resp_pkt_len = sizeof(struct iwx_notif_statistics),
+	};
+	int err;
+
+	err = iwx_send_cmd(sc, &cmd);
+	if (err)
+		return err;
+
+	iwx_free_resp(sc, &cmd);
+	return 0;
+}
+
 boolean_t
 iwx_rx_diversity_allowed(struct iwx_softc *sc)
 {

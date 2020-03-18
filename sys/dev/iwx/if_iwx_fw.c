@@ -128,6 +128,7 @@ __FBSDID("$FreeBSD$");
 #include <dev/iwx/if_iwx_fw.h>
 
 /* assume iwx_free_fw_paging() is identical to iwx_ctxt_info_free_paging() */
+#ifdef not_in_iwx
 void
 iwx_free_fw_paging(struct iwx_softc *sc)
 {
@@ -142,7 +143,9 @@ iwx_free_fw_paging(struct iwx_softc *sc)
 
 	memset(sc->fw_paging_db, 0, sizeof(sc->fw_paging_db));
 }
+#endif
 
+#ifdef not_in_iwx
 static int
 iwx_fill_paging_mem(struct iwx_softc *sc, const struct iwx_fw_img *image)
 {
@@ -225,7 +228,9 @@ iwx_fill_paging_mem(struct iwx_softc *sc, const struct iwx_fw_img *image)
 
 	return 0;
 }
+#endif
 
+#ifdef not_in_iwx
 static int
 iwx_alloc_fw_paging_mem(struct iwx_softc *sc, const struct iwx_fw_img *image)
 {
@@ -299,7 +304,9 @@ iwx_alloc_fw_paging_mem(struct iwx_softc *sc, const struct iwx_fw_img *image)
 
 	return 0;
 }
+#endif
 
+#ifdef not_in_iwx
 int
 iwx_save_fw_paging(struct iwx_softc *sc, const struct iwx_fw_img *fw)
 {
@@ -311,8 +318,10 @@ iwx_save_fw_paging(struct iwx_softc *sc, const struct iwx_fw_img *fw)
 
 	return iwx_fill_paging_mem(sc, fw);
 }
-/* send paging cmd to FW in case CPU2 has paging image */
+#endif
 
+/* send paging cmd to FW in case CPU2 has paging image */
+#ifdef not_in_iwx
 int
 iwx_send_paging_cmd(struct iwx_softc *sc, const struct iwx_fw_img *fw)
 {
@@ -343,3 +352,4 @@ iwx_send_paging_cmd(struct iwx_softc *sc, const struct iwx_fw_img *fw)
 						   IWX_ALWAYS_LONG_GROUP, 0),
 				    0, sizeof(fw_paging_cmd), &fw_paging_cmd);
 }
+#endif
