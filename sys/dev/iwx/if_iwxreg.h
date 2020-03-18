@@ -506,6 +506,12 @@ enum {
 
 #define IWX_FH_MEM_TB_MAX_LENGTH	0x20000
 
+#define IWM_LMPM_SECURE_UCODE_LOAD_CPU1_HDR_ADDR	0x1e78
+#define IWX_LMPM_SECURE_UCODE_LOAD_CPU2_HDR_ADDR	0x1e7c
+
+#define IWM_LMPM_SECURE_CPU1_HDR_MEM_SPACE		0x420000
+#define IWX_LMPM_SECURE_CPU2_HDR_MEM_SPACE		0x420400
+
 #define	IWX_UREG_CHICK			0xa05c00
 #define	IWX_UREG_CHICK_MSI_ENABLE	0x01000000
 #define	IWM_UREG_CHICK_MSIX_ENABLE	0x02000000
@@ -1092,6 +1098,102 @@ struct iwx_tlv_ucode_header {
 #define IWX_PRPH_BASE	(0x00000)
 #define IWM_PRPH_END	(0xFFFFF)
 
+/**
+ * Tx Scheduler
+ *
+ * The Tx Scheduler selects the next frame to be transmitted, choosing TFDs
+ * (Transmit Frame Descriptors) from up to 16 circular Tx queues resident in
+ * host DRAM.  It steers each frame's Tx command (which contains the frame
+ * data) into one of up to 7 prioritized Tx DMA FIFO channels within the
+ * device.  A queue maps to only one (selectable by driver) Tx DMA channel,
+ * but one DMA channel may take input from several queues.
+ *
+ * Tx DMA FIFOs have dedicated purposes.
+ *
+ * For 5000 series and up, they are used differently
+ * (cf. iwl5000_default_queue_to_tx_fifo in iwl-5000.c):
+ *
+ * 0 -- EDCA BK (background) frames, lowest priority
+ * 1 -- EDCA BE (best effort) frames, normal priority
+ * 2 -- EDCA VI (video) frames, higher priority
+ * 3 -- EDCA VO (voice) and management frames, highest priority
+ * 4 -- unused
+ * 5 -- unused
+ * 6 -- unused
+ * 7 -- Commands
+ *
+ * Driver should normally map queues 0-6 to Tx DMA/FIFO channels 0-6.
+ * In addition, driver can map the remaining queues to Tx DMA/FIFO
+ * channels 0-3 to support 11n aggregation via EDCA DMA channels.
+ *
+ * The driver sets up each queue to work in one of two modes:
+ *
+ * 1)  Scheduler-Ack, in which the scheduler automatically supports a
+ *     block-ack (BA) window of up to 64 TFDs.  In this mode, each queue
+ *     contains TFDs for a unique combination of Recipient Address (RA)
+ *     and Traffic Identifier (TID), that is, traffic of a given
+ *     Quality-Of-Service (QOS) priority, destined for a single station.
+ *
+ *     In scheduler-ack mode, the scheduler keeps track of the Tx status of
+ *     each frame within the BA window, including whether it's been transmitted,
+ *     and whether it's been acknowledged by the receiving station.  The device
+ *     automatically processes block-acks received from the receiving STA,
+ *     and reschedules un-acked frames to be retransmitted (successful
+ *     Tx completion may end up being out-of-order).
+ *
+ *     The driver must maintain the queue's Byte Count table in host DRAM
+ *     for this mode.
+ *     This mode does not support fragmentation.
+ *
+ * 2)  FIFO (a.k.a. non-Scheduler-ACK), in which each TFD is processed in order.
+ *     The device may automatically retry Tx, but will retry only one frame
+ *     at a time, until receiving ACK from receiving station, or reaching
+ *     retry limit and giving up.
+ *
+ *     The command queue (#4/#9) must use this mode!
+ *     This mode does not require use of the Byte Count table in host DRAM.
+ *
+ * Driver controls scheduler operation via 3 means:
+ * 1)  Scheduler registers
+ * 2)  Shared scheduler data base in internal SRAM
+ * 3)  Shared data in host DRAM
+ *
+ * Initialization:
+ *
+ * When loading, driver should allocate memory for:
+ * 1)  16 TFD circular buffers, each with space for (typically) 256 TFDs.
+ * 2)  16 Byte Count circular buffers in 16 KBytes contiguous memory
+ *     (1024 bytes for each queue).
+ *
+ * After receiving "Alive" response from uCode, driver must initialize
+ * the scheduler (especially for queue #4/#9, the command queue, otherwise
+ * the driver can't issue commands!):
+ */
+#define IWX_SCD_MEM_LOWER_BOUND		(0x0000)
+
+/* Context Data */
+#define IWX_SCD_CONTEXT_MEM_LOWER_BOUND	(IWX_SCD_MEM_LOWER_BOUND + 0x600)
+/* unused in iwm and in iwx */
+// #define IWM_SCD_CONTEXT_MEM_UPPER_BOUND	(IWM_SCD_MEM_LOWER_BOUND + 0x6A0)
+
+/* Translation Data */
+#define IWX_SCD_TRANS_TBL_MEM_LOWER_BOUND (IWX_SCD_MEM_LOWER_BOUND + 0x7E0)
+#define IWX_SCD_TRANS_TBL_MEM_UPPER_BOUND (IWX_SCD_MEM_LOWER_BOUND + 0x808)
+
+#define IWX_SCD_BASE			(IWX_PRPH_BASE + 0xa02c00)
+
+#define IWX_SCD_SRAM_BASE_ADDR	(IWX_SCD_BASE + 0x0)
+#define IWX_SCD_DRAM_BASE_ADDR	(IWX_SCD_BASE + 0x8)
+#define IWM_SCD_AIT		(IWM_SCD_BASE + 0x0c)
+#define IWX_SCD_TXFACT		(IWX_SCD_BASE + 0x10)
+#define IWM_SCD_ACTIVE		(IWM_SCD_BASE + 0x14)
+#define IWM_SCD_QUEUECHAIN_SEL	(IWM_SCD_BASE + 0xe8)
+#define IWX_SCD_CHAINEXT_EN	(IWX_SCD_BASE + 0x244)
+#define IWM_SCD_AGGR_SEL	(IWM_SCD_BASE + 0x248)
+#define IWM_SCD_INTERRUPT_MASK	(IWM_SCD_BASE + 0x108)
+#define IWM_SCD_GP_CTRL		(IWM_SCD_BASE + 0x1a8)
+#define IWM_SCD_EN_CTRL		(IWM_SCD_BASE + 0x254)
+
 /*
  * END iwl-prph.h
  */
@@ -1103,6 +1205,12 @@ struct iwx_tlv_ucode_header {
 /****************************/
 /* Flow Handler Definitions */
 /****************************/
+
+/**
+ * This I/O area is directly read/writable by driver (e.g. Linux uses writel())
+ * Addresses are offsets from device's PCI hardware base address.
+ */
+#define IWX_FH_MEM_LOWER_BOUND                   (0x1000)
 
 /* 22000 configuration registers */
 
@@ -1121,7 +1229,7 @@ struct iwx_tlv_ucode_header {
  * reading chunks of more than 64B only if the read address is aligned to 128B.
  * In case of DRAM read address which is not aligned to 128B, the TFH will
  * enable transfer size which doesn't cross 64B DRAM address boundary.
-*/
+ */
 #define IWX_TFH_TRANSFER_MODE			(0x1F40)
 #define IWX_TFH_TRANSFER_MAX_PENDING_REQ	0xc
 #define IWX_TFH_CHUNK_SIZE_128			(1 << 8)
@@ -1148,7 +1256,7 @@ struct iwx_tlv_ucode_header {
  * Bits 25:24: Defines the interrupt target upon dram2sram transfer done. When
  * set to 1 - interrupt is sent to the driver
  * Bit 0: Indicates the snoop configuration
-*/
+ */
 #define IWX_TFH_SRV_DMA_CHNL0_CTRL	(0x1F60)
 #define IWX_TFH_SRV_DMA_SNOOP		(1 << 0)
 #define IWX_TFH_SRV_DMA_TO_DRIVER	(1 << 24)
@@ -1211,6 +1319,62 @@ struct iwx_tlv_ucode_header {
 #define IWX_RFH_RXF_RXQ_ACTIVE		0xa0980c
 
 /* end of 9000 rx series registers */
+
+/**
+ * Transmit DMA Channel Control/Status Registers (TCSR)
+ *
+ * Device has one configuration register for each of 8 Tx DMA/FIFO channels
+ * supported in hardware (don't confuse these with the 16 Tx queues in DRAM,
+ * which feed the DMA/FIFO channels); config regs are separated by 0x20 bytes.
+ *
+ * To use a Tx DMA channel, driver must initialize its
+ * IWM_FH_TCSR_CHNL_TX_CONFIG_REG(chnl) with:
+ *
+ * IWM_FH_TCSR_TX_CONFIG_REG_VAL_DMA_CHNL_ENABLE |
+ * IWM_FH_TCSR_TX_CONFIG_REG_VAL_DMA_CREDIT_ENABLE_VAL
+ *
+ * All other bits should be 0.
+ *
+ * Bit fields:
+ * 31-30: Tx DMA channel enable: '00' off/pause, '01' pause at end of frame,
+ *        '10' operate normally
+ * 29- 4: Reserved, set to "0"
+ *     3: Enable internal DMA requests (1, normal operation), disable (0)
+ *  2- 0: Reserved, set to "0"
+ */
+#define IWX_FH_TCSR_LOWER_BOUND  (IWX_FH_MEM_LOWER_BOUND + 0xD00)
+
+/* Find Control/Status reg for given Tx DMA/FIFO channel */
+#define IWX_FH_TCSR_CHNL_NUM                            (8)
+
+/* TCSR: tx_config register values */
+#define IWX_FH_TCSR_CHNL_TX_CONFIG_REG(_chnl)	\
+		(IWX_FH_TCSR_LOWER_BOUND + 0x20 * (_chnl))
+
+#define IWM_FH_TCSR_TX_CONFIG_REG_VAL_MSG_MODE_TXF	(0x00000000)
+#define IWM_FH_TCSR_TX_CONFIG_REG_VAL_MSG_MODE_DRV	(0x00000001)
+
+#define IWM_FH_TCSR_TX_CONFIG_REG_VAL_DMA_CREDIT_DISABLE	(0x00000000)
+#define IWX_FH_TCSR_TX_CONFIG_REG_VAL_DMA_CREDIT_ENABLE		(0x00000008)
+
+#define IWM_FH_TCSR_TX_CONFIG_REG_VAL_CIRQ_HOST_NOINT	(0x00000000)
+#define IWM_FH_TCSR_TX_CONFIG_REG_VAL_CIRQ_HOST_ENDTFD	(0x00100000)
+#define IWM_FH_TCSR_TX_CONFIG_REG_VAL_CIRQ_HOST_IFTFD	(0x00200000)
+
+#define IWM_FH_TCSR_TX_CONFIG_REG_VAL_CIRQ_RTC_NOINT	(0x00000000)
+#define IWM_FH_TCSR_TX_CONFIG_REG_VAL_CIRQ_RTC_ENDTFD	(0x00400000)
+#define IWM_FH_TCSR_TX_CONFIG_REG_VAL_CIRQ_RTC_IFTFD	(0x00800000)
+
+#define IWM_FH_TCSR_TX_CONFIG_REG_VAL_DMA_CHNL_PAUSE		(0x00000000)
+#define IWM_FH_TCSR_TX_CONFIG_REG_VAL_DMA_CHNL_PAUSE_EOF	(0x40000000)
+#define IWX_FH_TCSR_TX_CONFIG_REG_VAL_DMA_CHNL_ENABLE		(0x80000000)
+
+#define IWX_FH_TX_CHICKEN_BITS_REG	(IWX_FH_MEM_LOWER_BOUND + 0xE98)
+
+/* Instruct FH to increment the retry count of a packet when
+ * it is brought from the memory to TX-FIFO
+ */
+#define IWX_FH_TX_CHICKEN_BITS_SCD_AUTO_RETRY_EN	(0x00000002)
 
 /*
  * This register is writen by driver and is read by uCode during boot flow.
@@ -1327,6 +1491,24 @@ struct iwx_gen3_bc_tbl {
 /* Maximum number of Tx queues. */
 #define IWX_MAX_QUEUES	31
 
+/* Tx queue numbers */
+enum {
+	IWM_OFFCHANNEL_QUEUE = 8,
+	IWX_CMD_QUEUE = 9,
+	IWM_AUX_QUEUE = 15,
+};
+
+enum iwm_tx_fifo {
+	IWM_TX_FIFO_BK = 0,
+	IWM_TX_FIFO_BE,
+	IWM_TX_FIFO_VI,
+	IWM_TX_FIFO_VO,
+	IWX_TX_FIFO_MCAST = 5,
+	IWM_TX_FIFO_CMD = 7,
+};
+
+#define IWX_STATION_COUNT	16
+
 /**
  * DQA - Dynamic Queue Allocation -introduction
  *
@@ -1361,17 +1543,6 @@ struct iwx_gen3_bc_tbl {
 #define IWX_DQA_AP_PROBE_RESP_QUEUE	9
 #define IWX_DQA_MIN_DATA_QUEUE		10
 #define IWX_DQA_MAX_DATA_QUEUE		31
-
-enum iwm_tx_fifo {
-	IWM_TX_FIFO_BK = 0,
-	IWM_TX_FIFO_BE,
-	IWM_TX_FIFO_VI,
-	IWM_TX_FIFO_VO,
-	IWX_TX_FIFO_MCAST = 5,
-	IWM_TX_FIFO_CMD = 7,
-};
-
-#define IWX_STATION_COUNT	16
 
 enum iwx_gen2_tx_fifo {
 	IWX_GEN2_TX_FIFO_CMD = 0,
@@ -1473,6 +1644,7 @@ enum {
 
 	/* Phy */
 	IWX_PHY_CONFIGURATION_CMD = 0x6a,
+	IWX_CALIB_RES_NOTIF_PHY_DB = 0x6b,
 
 	/* Power - legacy power table command */
 	IWX_POWER_TABLE_CMD = 0x77,
@@ -6262,7 +6434,7 @@ enum iwx_power_scheme {
 
 #define IWX_DEF_CMD_PAYLOAD_SIZE 320
 #define IWM_MAX_CMD_PAYLOAD_SIZE ((4096 - 4) - sizeof(struct iwm_cmd_header))
-#define IWM_CMD_FAILED_MSK 0x40
+#define IWX_CMD_FAILED_MSK 0x40
 
 /**
  * struct iwm_device_cmd
