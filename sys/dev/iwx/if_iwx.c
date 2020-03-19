@@ -431,6 +431,7 @@ void	iwx_ctxt_info_free(struct iwx_softc *);
 void	iwx_ctxt_info_free_paging(struct iwx_softc *);
 int	iwx_init_fw_sec(struct iwx_softc *, const struct iwx_fw_img *,
 	    struct iwx_context_info_dram *);
+void		iwx_update_rx_desc(struct iwx_softc *sc, struct iwx_rx_ring *ring, int idx);
 //int	iwx_firmware_store_section(struct iwx_softc *, enum iwx_ucode_type,
 //	    uint8_t *, size_t);
 //int	iwx_set_default_calib(struct iwx_softc *, const void *);
