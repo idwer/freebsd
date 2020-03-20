@@ -1098,6 +1098,13 @@ struct iwx_tlv_ucode_header {
 #define IWX_PRPH_BASE	(0x00000)
 #define IWM_PRPH_END	(0xFFFFF)
 
+/*
+ * Device reset for family 8000
+ * write to bit 24 in order to reset the CPU
+ */
+#define IWX_RELEASE_CPU_RESET		0x300c
+#define IWX_RELEASE_CPU_RESET_BIT	0x1000000
+
 /**
  * Tx Scheduler
  *
@@ -1276,6 +1283,8 @@ struct iwx_tlv_ucode_header {
 
 /* 9000 rx series registers */
 
+#define IWX_FH_MEM_TFDIB_REG1_ADDR_BITSHIFT	28
+
 #define IWX_RFH_Q0_FRBDCB_BA_LSB	0xa08000
 #define IWM_RFH_Q_FRBDCB_BA_LSB		(IWM_RFH_Q0_FRBDCB_BA_LSB + (q) * 8)
 /* Write index table */
@@ -1320,6 +1329,14 @@ struct iwx_tlv_ucode_header {
 
 /* end of 9000 rx series registers */
 
+/* TFDB  Area - TFDs buffer table */
+#define IWX_FH_MEM_TFDIB_DRAM_ADDR_LSB_MSK      (0xFFFFFFFF)
+#define IWX_FH_TFDIB_LOWER_BOUND       (IWX_FH_MEM_LOWER_BOUND + 0x900)
+/* unused in iwm and in iwx */
+// #define IWM_FH_TFDIB_UPPER_BOUND       (IWM_FH_MEM_LOWER_BOUND + 0x958)
+#define IWX_FH_TFDIB_CTRL0_REG(_chnl)  (IWX_FH_TFDIB_LOWER_BOUND + 0x8 * (_chnl))
+#define IWX_FH_TFDIB_CTRL1_REG(_chnl)  (IWX_FH_TFDIB_LOWER_BOUND + 0x8 * (_chnl) + 0x4)
+
 /**
  * Transmit DMA Channel Control/Status Registers (TCSR)
  *
@@ -1350,24 +1367,44 @@ struct iwx_tlv_ucode_header {
 /* TCSR: tx_config register values */
 #define IWX_FH_TCSR_CHNL_TX_CONFIG_REG(_chnl)	\
 		(IWX_FH_TCSR_LOWER_BOUND + 0x20 * (_chnl))
+#define IWM_FH_TCSR_CHNL_TX_CREDIT_REG(_chnl)	\
+		(IWM_FH_TCSR_LOWER_BOUND + 0x20 * (_chnl) + 0x4)
+#define IWX_FH_TCSR_CHNL_TX_BUF_STS_REG(_chnl)	\
+		(IWX_FH_TCSR_LOWER_BOUND + 0x20 * (_chnl) + 0x8)
+
 
 #define IWM_FH_TCSR_TX_CONFIG_REG_VAL_MSG_MODE_TXF	(0x00000000)
 #define IWM_FH_TCSR_TX_CONFIG_REG_VAL_MSG_MODE_DRV	(0x00000001)
 
-#define IWM_FH_TCSR_TX_CONFIG_REG_VAL_DMA_CREDIT_DISABLE	(0x00000000)
+#define IWX_FH_TCSR_TX_CONFIG_REG_VAL_DMA_CREDIT_DISABLE	(0x00000000)
 #define IWX_FH_TCSR_TX_CONFIG_REG_VAL_DMA_CREDIT_ENABLE		(0x00000008)
 
 #define IWM_FH_TCSR_TX_CONFIG_REG_VAL_CIRQ_HOST_NOINT	(0x00000000)
-#define IWM_FH_TCSR_TX_CONFIG_REG_VAL_CIRQ_HOST_ENDTFD	(0x00100000)
+#define IWX_FH_TCSR_TX_CONFIG_REG_VAL_CIRQ_HOST_ENDTFD	(0x00100000)
 #define IWM_FH_TCSR_TX_CONFIG_REG_VAL_CIRQ_HOST_IFTFD	(0x00200000)
 
 #define IWM_FH_TCSR_TX_CONFIG_REG_VAL_CIRQ_RTC_NOINT	(0x00000000)
 #define IWM_FH_TCSR_TX_CONFIG_REG_VAL_CIRQ_RTC_ENDTFD	(0x00400000)
 #define IWM_FH_TCSR_TX_CONFIG_REG_VAL_CIRQ_RTC_IFTFD	(0x00800000)
 
-#define IWM_FH_TCSR_TX_CONFIG_REG_VAL_DMA_CHNL_PAUSE		(0x00000000)
+#define IWX_FH_TCSR_TX_CONFIG_REG_VAL_DMA_CHNL_PAUSE		(0x00000000)
 #define IWM_FH_TCSR_TX_CONFIG_REG_VAL_DMA_CHNL_PAUSE_EOF	(0x40000000)
 #define IWX_FH_TCSR_TX_CONFIG_REG_VAL_DMA_CHNL_ENABLE		(0x80000000)
+
+#define IWM_FH_TCSR_CHNL_TX_BUF_STS_REG_VAL_TFDB_EMPTY	(0x00000000)
+#define IWM_FH_TCSR_CHNL_TX_BUF_STS_REG_VAL_TFDB_WAIT	(0x00002000)
+#define IWX_FH_TCSR_CHNL_TX_BUF_STS_REG_VAL_TFDB_VALID	(0x00000003)
+
+#define IWX_FH_TCSR_CHNL_TX_BUF_STS_REG_POS_TB_NUM		(20)
+#define IWX_FH_TCSR_CHNL_TX_BUF_STS_REG_POS_TB_IDX		(12)
+
+/* Tx service channels */
+#define IWX_FH_SRVC_CHNL		(9)
+#define IWX_FH_SRVC_LOWER_BOUND	(IWX_FH_MEM_LOWER_BOUND + 0x9C8)
+/* unused in iwm and in iwx */
+// #define IWM_FH_SRVC_UPPER_BOUND	(IWM_FH_MEM_LOWER_BOUND + 0x9D0)
+#define IWX_FH_SRVC_CHNL_SRAM_ADDR_REG(_chnl) \
+		(IWX_FH_SRVC_LOWER_BOUND + ((_chnl) - 9) * 0x4)
 
 #define IWX_FH_TX_CHICKEN_BITS_REG	(IWX_FH_MEM_LOWER_BOUND + 0xE98)
 
@@ -1414,6 +1451,10 @@ struct iwx_rb_status {
 					IWX_TFD_QUEUE_SIZE_BC_DUP)
 #define IWX_TFH_NUM_TBS			25
 
+static inline uint8_t iwx_get_dma_hi_addr(bus_addr_t addr)
+{
+	return (sizeof(addr) > sizeof(uint32_t) ? (addr >> 16) >> 16 : 0) & 0xF;
+}
 /**
  * struct iwx_tfh_tb transmit buffer descriptor within transmit frame descriptor
  *
@@ -1735,7 +1776,7 @@ enum iwx_phy_ops_subcmd_ids {
 enum {
 	IWM_LEGACY_GROUP = 0x0,
 	IWM_LONG_GROUP = 0x1,
-	IWM_SYSTEM_GROUP = 0x2,
+	IWX_SYSTEM_GROUP = 0x2,
 	IWM_MAC_CONF_GROUP = 0x3,
 	IWX_PHY_OPS_GROUP = 0x4,
 	IWM_DATA_PATH_GROUP = 0x5,
@@ -2011,7 +2052,6 @@ struct iwx_alive_resp_v4 {
 	struct iwx_lmac_alive lmac_data[2];
 	struct iwx_umac_alive umac_data;
 } __packed; /* ALIVE_RES_API_S_VER_4 */
-// todo: read until here
 
 /**
  * commands driver may send before finishing init flow
@@ -4018,7 +4058,7 @@ struct iwm_powertable_cmd {
  */
 enum iwx_device_power_flags {
 	IWX_DEVICE_POWER_FLAGS_POWER_SAVE_ENA_MSK	= (1 << 0),
-	// todo: port bit 13 (CAM_MSK)?
+	/* todo if_iwx: port bit 13 (CAM_MSK)? */
 };
 
 /**
@@ -4236,7 +4276,7 @@ struct iwx_beacon_filter_cmd {
  * struct iwm_rate_info fw_rate_idx_to_plcp[IWM_RATE_COUNT];
  * TODO: avoid overlap between legacy and HT rates
  */
-enum { // todo: sync with openbsd?
+enum { /* todo if_iwx: perhaps sync with openbsd */
 	IWX_RATE_1M_INDEX = 0,
 	IWX_FIRST_CCK_RATE = IWX_RATE_1M_INDEX,
 	IWX_RATE_2M_INDEX,
@@ -4686,7 +4726,7 @@ enum iwx_tx_offload_assist_flags_pos {
 #define IWX_TX_CMD_OFFLD_L4_EN		(1 << 6)
 #define IWX_TX_CMD_OFFLD_L3_EN		(1 << 7)
 #define IWX_TX_CMD_OFFLD_MH_SIZE	(1 << 8)
-#define IWX_TX_CMD_OFFLD_PAD		(1 << 13)
+//#define IWX_TX_CMD_OFFLD_PAD		(1 << 13)
 #define IWX_TX_CMD_OFFLD_AMSDU		(1 << 14)
 #define IWX_TX_CMD_OFFLD_MH_MASK	0x1f
 #define IWX_TX_CMD_OFFLD_IP_HDR_MASK	0x3f
@@ -5571,7 +5611,7 @@ enum iwm_umac_scan_general_flags {
 	IWM_UMAC_SCAN_GEN_FLAGS_RRM_ENABLED	= (1 << 8),
 	IWM_UMAC_SCAN_GEN_FLAGS_MATCH		= (1 << 9),
 	IWM_UMAC_SCAN_GEN_FLAGS_EXTENDED_DWELL	= (1 << 10),
-// todo? openbsd has bits for 10,11,13-15
+/* todo if_iwx: openbsd has bits for 10,11,13-15 */
 };
 
 /**
@@ -6477,10 +6517,12 @@ struct iwx_rx_packet {
 #define	IWX_FH_RSCSR_FRAME_SIZE_MSK	0x00003fff
 #define IWX_FH_RSCSR_FRAME_INVALID	0x55550000
 #define IWX_FH_RSCSR_FRAME_ALIGN	0x40
-// todo: three more regs?
-// #define	IWX_FH_RSCSR_RPA_EN		(1 << 25)
-// #define	IWX_FH_RSCSR_RXQ_POS		16
-// #define	IWX_FH_RSCSR_RXQ_MASK		0x3F0000
+/* todo if_iwx: port these three regs */
+#if 0
+#define	IWX_FH_RSCSR_RPA_EN		(1 << 25)
+#define	IWX_FH_RSCSR_RXQ_POS		16
+#define	IWX_FH_RSCSR_RXQ_MASK		0x3F0000
+#endif
  
 static inline uint32_t
 iwx_rx_packet_len(const struct iwx_rx_packet *pkt)

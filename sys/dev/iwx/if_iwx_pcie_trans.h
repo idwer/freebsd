@@ -133,7 +133,6 @@ extern	int iwx_apm_init(struct iwx_softc *sc);
 extern	void iwx_apm_stop(struct iwx_softc *sc);
 extern	int iwx_start_hw(struct iwx_softc *sc);
 extern	void iwx_set_pwr(struct iwx_softc *sc);
-// extern	int iwm_pcie_rx_stop(struct iwx_softc *sc);
 extern	int iwx_pcie_rx_stop(struct iwx_softc *sc);
 
 extern	int iwx_pcie_set_cmd_in_flight(struct iwx_softc *sc);

@@ -188,7 +188,7 @@ struct iwx_fw_img { // iwx_fw_sects in openbsd
 //#define IWX_FW_DBG_CONF_MAX 32
 
 //enum iwx_fw_dbg_trigger {
-	// todo: import other entries from openbsd
+	/* todo if_iwx: import other entries from openbsd */
 	/* must be last */
 //	IWX_FW_DBG_TRIGGER_MAX,
 //};
@@ -237,7 +237,7 @@ struct iwx_nvm_data {
 	uint8_t radio_cfg_dash;
 	uint8_t radio_cfg_pnum;
 	uint8_t valid_tx_ant, valid_rx_ant;
-// todo: sync with openbsd
+/* todo if_iwx: sync with openbsd */
 #define IWX_NUM_CHANNELS	51
 	uint16_t nvm_version;
 	uint8_t max_tx_pwr_half_dbm;
@@ -537,7 +537,7 @@ struct iwx_softc {
 
 	const struct iwx_cfg	*cfg;
 	struct iwx_nvm_data	*nvm_data; // sc_nvm?
-//	struct iwx_phy_db	*sc_phy_db;
+	struct iwx_phy_db	*sc_phy_db;
 
 	struct iwm_bf_data	sc_bf; // does the openbsd driver actually use iwx_bf_data?
 
@@ -563,7 +563,7 @@ struct iwx_softc {
 	/* phy contexts.  we only use the first one */
 	struct iwx_phy_ctxt	sc_phyctxt[IWX_NUM_PHY_CTX];
 
-	// todo: update struct to v10
+	/* todo if_iwx: update struct to v10 */
 	struct iwx_notif_statistics_v13 sc_stats;
 	int			sc_noise;
 

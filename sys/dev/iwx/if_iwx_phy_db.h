@@ -110,8 +110,8 @@
 
 extern	struct iwx_phy_db *iwx_phy_db_init(struct iwx_softc *sc);
 extern	void iwx_phy_db_free(struct iwx_phy_db *phy_db);
-// extern	int iwx_phy_db_set_section(struct iwx_phy_db *phy_db,
-//	     struct iwx_rx_packet *pkt);
-//extern	int iwx_send_phy_db_data(struct iwx_phy_db *phy_db);
+extern	int iwx_phy_db_set_section(struct iwx_phy_db *phy_db,
+	     struct iwx_rx_packet *pkt);
+extern	int iwx_send_phy_db_data(struct iwx_phy_db *phy_db);
 
 #endif	/* __IF_IWM_PHY_DB_H__ */
