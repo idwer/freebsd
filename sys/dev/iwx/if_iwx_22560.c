@@ -91,7 +91,7 @@ __FBSDID("$FreeBSD$");
 	.nvm_hw_section_num = IWM_NVM_HW_SECTION_NUM_FAMILY_9260
 
 const struct iwm_cfg iwm9260_cfg = {
-	.name = "Intel(R) Dual Band Wireless AC 9260",
+	.name = "iwx22560_cfg, in need of a better name /* Intel(R) Dual Band Wireless AC 9260 */",
 	.fw_name = IWM9260_FW,
 	IWM_DEVICE_9260_COMMON,
 	.host_interrupt_operation_mode = 0,

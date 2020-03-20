@@ -671,11 +671,12 @@ iwx_start_hw(struct iwx_softc *sc)
 	if ((error = iwx_apm_init(sc)) != 0)
 		return error;
 
-	/* On newer chipsets MSI is disabled by default. */
 #ifdef not_in_iwx
-	// todo: replace this with iwx_init_msix_hw() - import it first
+	/* On newer chipsets MSI is disabled by default. */
+	/* todo if_iwx: replace this with iwx_init_msix_hw() - import it first */
 	if (sc->cfg->mqrx_supported)
-		iwx_write_prph(sc, IWX_UREG_CHICK, IWX_UREG_CHICK_MSI_ENABLE);#endif
+		iwx_write_prph(sc, IWX_UREG_CHICK, IWX_UREG_CHICK_MSI_ENABLE);
+#endif
 
 	iwx_enable_rfkill_int(sc);
 	iwx_check_rfkill(sc);

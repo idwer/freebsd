@@ -273,7 +273,7 @@ int
 iwx_rm_sta(struct iwx_softc *sc, struct ieee80211vap *vap,
 	boolean_t is_assoc)
 {
-	uint32_t tfd_queue_msk = 0;
+//	uint32_t tfd_queue_msk = 0;
 	int ret;
 	int ac;
 
@@ -283,7 +283,8 @@ iwx_rm_sta(struct iwx_softc *sc, struct ieee80211vap *vap,
 	for (ac = 0; ac < WME_NUM_AC; ac++) {
 		tfd_queue_msk |= htole32(1 << iwx_ac_to_tx_fifo[ac]);
 	}
-	ret = iwx_flush_tx_path(sc, tfd_queue_msk, IWX_CMD_SYNC);
+//	ret = iwx_flush_tx_path(sc, tfd_queue_msk, IWX_CMD_SYNC);
+	ret = iwx_flush_tx_path(sc, IWX_CMD_SYNC);
 	if (ret)
 		return ret;
 #ifdef notyet /* function not yet implemented */
@@ -361,13 +362,10 @@ iwx_add_aux_sta(struct iwx_softc *sc)
 	sc->sc_aux_sta.tfd_queue_msk = (1 << IWX_AUX_QUEUE);
 
 	/* Map Aux queue to fifo - needs to happen before adding Aux station */
-#if 0
-// todo: update parameters for iwx_enable_txq()
-	ret = iwx_enable_txq(sc, IWX_AUX_STA_ID, IWX_AUX_QUEUE,
-	    IWX_TX_FIFO_MCAST);
+	ret = iwx_enable_txq(sc, IWX_AUX_STA_ID, IWX_DQA_AUX_QUEUE,
+			IWX_MGMT_ID, IWX_TX_RING_COUNT);
 	if (ret)
 		return ret;
-#endif
 
 	ret = iwx_add_int_sta_common(sc, &sc->sc_aux_sta, NULL,
 					 IWX_MAC_INDEX_AUX, 0);

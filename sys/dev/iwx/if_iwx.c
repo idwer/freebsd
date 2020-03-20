@@ -216,11 +216,13 @@ const struct iwx_rate {
 	{  72,	IWM_RATE_36M_PLCP },
 	{  96,	IWM_RATE_48M_PLCP },
 	{ 108,	IWM_RATE_54M_PLCP },
-	/* todo implement other rates (128 up to and including 260) */
+	/* todo if_iwx: implement other rates (128 up to and including 260) */
 };
 
 /* unused in iwm and in iwx */
+#ifdef not_in_iwx
 // #define IWM_RIDX_CCK	0
+#endif
 #define IWX_RIDX_OFDM	4
 #define IWX_RIDX_MAX	(nitems(iwx_rates)-1)
 #define IWX_RIDX_IS_CCK(_i_) ((_i_) < IWX_RIDX_OFDM)
@@ -272,7 +274,9 @@ static int	iwx_nic_rx_init(struct iwx_softc *);
 // static int	iwx_nic_tx_init(struct iwx_softc *);
 #endif
 static int	iwx_nic_init(struct iwx_softc *);
+#ifdef not_in_iwx
 static int	iwx_trans_pcie_fw_alive(struct iwx_softc *, uint32_t);
+#endif
 static int	iwx_nvm_read_chunk(struct iwx_softc *, uint16_t, uint16_t,
                                    uint16_t, uint8_t *, uint16_t *);
 static int	iwx_nvm_read_section(struct iwx_softc *, uint16_t, uint8_t *,
@@ -305,8 +309,10 @@ static void	iwx_set_radio_cfg(const struct iwx_softc *,
 static struct iwx_nvm_data *
 	iwx_parse_nvm_sections(struct iwx_softc *, struct iwx_nvm_section *);
 static int	iwx_nvm_init(struct iwx_softc *);
+#ifdef not_in_iwx
 static int	iwx_pcie_load_section(struct iwx_softc *, uint8_t,
 				      const struct iwx_fw_desc *);
+#endif
 static int	iwx_pcie_load_firmware_chunk(struct iwx_softc *, uint32_t,
 					     bus_addr_t, uint32_t);
 #if 0 // see TODO iwx
@@ -480,7 +486,7 @@ void		iwx_update_rx_desc(struct iwx_softc *sc, struct iwx_rx_ring *ring, int idx
 //void	iwx_nic_config(struct iwx_softc *);
 //int	iwx_nic_rx_init(struct iwx_softc *);
 //int	iwx_nic_init(struct iwx_softc *);
-//int	iwx_enable_txq(struct iwx_softc *, int, int, int, int);
+int	iwx_enable_txq(struct iwx_softc *, int, int, int, int);
 //void	iwx_post_alive(struct iwx_softc *);
 //void	iwx_protect_session(struct iwx_softc *, struct iwx_node *, uint32_t,
 //	    uint32_t);
@@ -524,7 +530,7 @@ void		iwx_update_rx_desc(struct iwx_softc *sc, struct iwx_rx_ring *ring, int idx
 //int	iwx_send_dqa_cmd(struct iwx_softc *);
 //int	iwx_run_init_mvm_ucode(struct iwx_softc *, int);
 //int	iwx_config_ltr(struct iwx_softc *);
-//void	iwx_update_rx_desc(struct iwx_softc *, struct iwx_rx_ring *, int);
+void	iwx_update_rx_desc(struct iwx_softc *, struct iwx_rx_ring *, int);
 //int	iwx_rx_addbuf(struct iwx_softc *, int, int);
 //int	iwx_rxmq_get_signal_strength(struct iwx_softc *, struct iwx_rx_mpdu_desc *);
 //void	iwx_rx_rx_phy_cmd(struct iwx_softc *, struct iwx_rx_packet *,
@@ -557,7 +563,7 @@ void		iwx_update_rx_desc(struct iwx_softc *sc, struct iwx_rx_ring *ring, int idx
 //void	iwx_cmd_done(struct iwx_softc *, int, int, int);
 //const struct iwx_rate *iwx_tx_fill_cmd(struct iwx_softc *, struct iwx_node *,
 //	    struct ieee80211_frame *, struct iwx_tx_cmd_gen2 *);
-//void	iwx_tx_update_byte_tbl(struct iwx_tx_ring *, uint16_t, uint16_t);
+void	iwx_tx_update_byte_tbl(struct iwx_tx_ring *, uint16_t, uint16_t);
 //int	iwx_tx(struct iwx_softc *, struct mbuf *, struct ieee80211_node *, int);
 //int	iwx_flush_tx_path(struct iwx_softc *);
 //int	iwx_beacon_filter_send_cmd(struct iwx_softc *,
@@ -571,7 +577,7 @@ void		iwx_update_rx_desc(struct iwx_softc *sc, struct iwx_rx_ring *ring, int idx
 //int	iwx_disable_beacon_filter(struct iwx_softc *);
 //int	iwx_add_sta_cmd(struct iwx_softc *, struct iwx_node *, int);
 //int	iwx_add_aux_sta(struct iwx_softc *);
-//int	iwx_rm_sta_cmd(struct iwx_softc *, struct iwx_node *);
+int	iwx_rm_sta_cmd(struct iwx_softc *, struct iwx_node *);
 //int	iwx_fill_probe_req(struct iwx_softc *, struct iwx_scan_probe_req *);
 //int	iwx_config_umac_scan(struct iwx_softc *);
 //int	iwx_umac_scan(struct iwx_softc *, int);
@@ -591,7 +597,7 @@ void		iwx_update_rx_desc(struct iwx_softc *sc, struct iwx_rx_ring *ring, int idx
 //int	iwx_bgscan(struct ieee80211com *);
 //int	iwx_umac_scan_abort(struct iwx_softc *);
 //int	iwx_scan_abort(struct iwx_softc *);
-//int	iwx_enable_data_tx_queues(struct iwx_softc *);
+int	iwx_enable_data_tx_queues(struct iwx_softc *);
 //int	iwx_auth(struct iwx_softc *);
 //int	iwx_deauth(struct iwx_softc *);
 //int	iwx_assoc(struct iwx_softc *);
@@ -2201,6 +2207,7 @@ out:
 }
 
 #if 0
+/* this is openbsd's implementation */
 static void
 iwx_trans_pcie_fw_alive(struct iwx_softc *sc)
 {
@@ -2208,6 +2215,7 @@ iwx_trans_pcie_fw_alive(struct iwx_softc *sc)
 	iwx_ctxt_info_free(sc);
 }
 #endif
+#ifdef not_in_iwx
 static int
 iwx_trans_pcie_fw_alive(struct iwx_softc *sc, uint32_t scd_base_addr)
 {
@@ -2281,6 +2289,7 @@ iwx_trans_pcie_fw_alive(struct iwx_softc *sc, uint32_t scd_base_addr)
 
 	return error;
 }
+#endif
 
 /*
  * NVM read access and content parsing.  We do not support
@@ -2689,7 +2698,7 @@ iwx_get_sku(const struct iwx_softc *sc, const uint16_t *nvm_sw,
 	if (sc->cfg->device_family < IWM_DEVICE_FAMILY_8000)
 		return le16_to_cpup(nvm_sw + IWM_SKU);
 #endif
-	/* todo: tune to match/support family 22000 */
+	/* todo if_iwx: tune to match/support family 22000 */
 #if 0
 	return le32_to_cpup((const uint32_t *)(phy_sku + IWM_SKU_8000));
 #endif
@@ -2702,9 +2711,9 @@ iwx_get_nvm_version(const struct iwx_softc *sc, const uint16_t *nvm_sw)
 #if 0
 	if (sc->cfg->device_family < IWM_DEVICE_FAMILY_8000)
 		return le16_to_cpup(nvm_sw + IWM_NVM_VERSION);
+	else
 #endif
-//	else
-	/* todo: tune to match/support family 22000 */
+	/* todo if_iwx: tune to match/support family 22000 */
 
 		return le32_to_cpup((const uint32_t *)(nvm_sw +
 						IWX_NVM_VERSION));
@@ -2718,7 +2727,7 @@ iwx_get_radio_cfg(const struct iwx_softc *sc, const uint16_t *nvm_sw,
 	if (sc->cfg->device_family < IWM_DEVICE_FAMILY_8000)
                 return le16_to_cpup(nvm_sw + IWM_RADIO_CFG);
 #endif
-	/* todo: tune to match/support family 22000 */
+	/* todo if_iwx: tune to match/support family 22000 */
 
         return le32_to_cpup((const uint32_t *)(phy_sku + IWX_RADIO_CFG));
 }
@@ -2732,7 +2741,7 @@ iwx_get_n_hw_addrs(const struct iwx_softc *sc, const uint16_t *nvm_sw)
 	if (sc->cfg->device_family < IWM_DEVICE_FAMILY_8000)
 		return le16_to_cpup(nvm_sw + IWM_N_HW_ADDRS);
 #endif
-	/* todo: tune to match/support family 22000 */
+	/* todo if_iwx: tune to match/support family 22000 */
 	// n_hw_addr = le32_to_cpup((const uint32_t *)(nvm_sw + IWX_N_HW_ADDRS_8000));
 	n_hw_addr = le32_to_cpup((const uint32_t *)(nvm_sw + IWX_N_HW_ADDRS));
         return n_hw_addr & IWX_N_HW_ADDR_MASK;
@@ -2751,7 +2760,7 @@ iwx_set_radio_cfg(const struct iwx_softc *sc, struct iwx_nvm_data *data,
 		return;
 	}
 #endif
-	/* todo: tune to match/support family 22000 */
+	/* todo if_iwx: tune to match/support family 22000 */
 	/* set the radio configuration for family 8000 */
 //	data->radio_cfg_type = IWX_NVM_RF_CFG_TYPE_MSK_8000(radio_cfg);
 //	data->radio_cfg_step = IWX_NVM_RF_CFG_STEP_MSK_8000(radio_cfg);
@@ -2789,7 +2798,7 @@ iwx_set_hw_address(struct iwx_softc *sc, struct iwx_nvm_data *data,
 		data->hw_addr[5] = hw_addr[4];
 	} else {
 #endif
-		/* todo: merge the function below into this function  */
+		/* todo if_iwx: merge the function below into this function  */
 		iwx_set_hw_address_family_8000(sc, data, mac_override, nvm_hw);
 //	}
 
@@ -2837,7 +2846,7 @@ iwx_parse_nvm_data(struct iwx_softc *sc,
 
 	data->n_hw_addrs = iwx_get_n_hw_addrs(sc, nvm_sw);
 
-	/* todo: tune to match/support family 22000 */
+	/* todo if_iwx: tune to match/support family 22000 */
 #if 0
 	if (sc->cfg->device_family >= IWX_DEVICE_FAMILY_8000) {
 		/* TODO: use IWL_NVM_EXT */
@@ -2885,7 +2894,7 @@ iwx_parse_nvm_sections(struct iwx_softc *sc, struct iwx_nvm_section *sections)
 	const uint16_t *hw, *sw, *calib, *regulatory, *mac_override, *phy_sku;
 
 #if 0
-	/* todo: tune to match/support family 22000 */
+	/* todo if_iwx: tune to match/support family 22000 */
 	/* Checking for required sections */
 	if (sc->cfg->device_family == IWM_DEVICE_FAMILY_7000) {
 		if (!sections[IWM_NVM_SECTION_TYPE_SW].data ||
@@ -2999,6 +3008,7 @@ iwx_nvm_init(struct iwx_softc *sc)
 }
 
 #ifdef not_in_iwx
+// iwm_firmware_load_sect() in openbsd
 static int
 iwx_pcie_load_section(struct iwx_softc *sc, uint8_t section_num,
 	const struct iwx_fw_desc *section)
@@ -3057,7 +3067,6 @@ iwx_pcie_load_section(struct iwx_softc *sc, uint8_t section_num,
  * ucode
  */
 static int
-#ifdef not_in_iwx
 iwx_pcie_load_firmware_chunk(struct iwx_softc *sc, uint32_t dst_addr,
 			     bus_addr_t phy_addr, uint32_t byte_cnt)
 {
@@ -3100,13 +3109,20 @@ iwx_pcie_load_firmware_chunk(struct iwx_softc *sc, uint32_t dst_addr,
 		    dst_addr, byte_cnt);
 		return ETIMEDOUT;
 	}
-#endif
+	return 0;
+}
+
+#ifdef not_in_iwx
+static int
 iwx_load_firmware(struct iwx_softc *sc)
 {
 	struct iwx_fw_sects *fws;
 	int err, w;
 
+#ifdef not_in_iwx
 	sc->sc_uc.uc_intr = 0;
+#endif
+	iwx_enable_fw_load_int(sc);
 
 	fws = &sc->sc_fw.fw_sects[IWX_UCODE_REGULAR];
 	err = iwx_ctxt_info_init(sc, fws);
@@ -3116,7 +3132,7 @@ iwx_load_firmware(struct iwx_softc *sc)
 	}
 
 	/* wait for the firmware to load */
-	/* todo: apply proper timing code */
+	/* todo if_iwx: apply proper timing code */
 #if 0
 	for (w = 0; !sc->sc_uc.uc_intr && w < 10; w++) {
 		err = tsleep_nsec(&sc->sc_uc, 0, "iwxuc", MSEC_TO_NSEC(100));
@@ -3130,6 +3146,7 @@ iwx_load_firmware(struct iwx_softc *sc)
 	return err;
 //	return 0;
 }
+#endif
 
 /* assume this is identical to iwx_get_num_sections() in OpenBSD */
 static int
@@ -3157,16 +3174,16 @@ iwx_pcie_load_cpu_sections(struct iwx_softc *sc,
 		 * PAGING_SEPARATOR_SECTION delimiter - separate between
 		 * CPU2 non paged to CPU2 paging sec.
 		 */
-		if (!image->sec[i].data ||
-		    image->sec[i].offset == IWX_CPU1_CPU2_SEPARATOR_SECTION ||
-		    image->sec[i].offset == IWX_PAGING_SEPARATOR_SECTION) {
+		if (!image->fw_sect[i].data ||
+		    image->fw_sect[i].offset == IWX_CPU1_CPU2_SEPARATOR_SECTION ||
+		    image->fw_sect[i].offset == IWX_PAGING_SEPARATOR_SECTION) {
 			IWX_DPRINTF(sc, IWX_DEBUG_RESET,
 				    "Break since Data not valid or Empty section, sec = %d\n",
 				     i);
 			break;
 		}
 
-		ret = iwx_pcie_load_section(sc, i, &image->sec[i]);
+		ret = iwx_pcie_load_section(sc, i, &image->fw_sect[i]);
 		if (ret)
 			return ret;
 	}
@@ -3181,7 +3198,14 @@ static int
 iwx_pcie_load_given_ucode(struct iwx_softc *sc, const struct iwx_fw_img *image)
 {
 	int ret = 0;
+//#ifdef not_in_iwx
 	int first_ucode_section;
+//#endif
+
+/* todo if_iwx: add code to do what openbsd does */
+#if 0
+	sc->sc_uc.uc_intr = 0;
+#endif
 
 	IWX_DPRINTF(sc, IWX_DEBUG_RESET, "working with %s CPU\n",
 		     image->is_dual_cpus ? "Dual" : "Single");
@@ -3310,34 +3334,41 @@ static int
 iwx_alive_fn(struct iwx_softc *sc, struct iwx_rx_packet *pkt, void *data)
 {
 	struct iwx_alive_data *alive_data = data;
+#ifdef not_in_iwx
 	struct iwx_alive_resp_v3 *palive3;
-	struct iwx_alive_resp *palive;
+#endif
+//	struct iwx_alive_resp *palive;
 	struct iwx_alive_resp_v4 *palive;
 	struct iwx_umac_alive *umac;
 	struct iwx_lmac_alive *lmac1;
 	struct iwx_lmac_alive *lmac2 = NULL;
-	uint16_t status;
+	uint16_t status = 0;
+//	struct iwx_lmac_debug_addrs *lmac_dbg;
 
-	if (iwx_rx_packet_payload_len(pkt) == sizeof(*palive)) {
+//	if (iwx_rx_packet_payload_len(pkt) == sizeof(*palive)) {
 		palive = (void *)pkt->data;
 		umac = &palive->umac_data;
 		lmac1 = &palive->lmac_data[0];
 		lmac2 = &palive->lmac_data[1];
 		status = le16toh(palive->status);
+//		lmac_dbg->error_event_table_ptr = &
+#ifdef not_in_iwx
 	} else {
 		palive3 = (void *)pkt->data;
 		umac = &palive3->umac_data;
 		lmac1 = &palive3->lmac_data;
 		status = le16toh(palive3->status);
-	}
+#endif
+//	}
 
-	sc->error_event_table[0] = le32toh(lmac1->error_event_table_ptr);
+	sc->lmac_error_event_table[0] = le32toh(lmac1->dbg_ptrs.error_event_table_ptr);
 	if (lmac2)
-		sc->error_event_table[1] =
-			le32toh(lmac2->error_event_table_ptr);
-	sc->log_event_table = le32toh(lmac1->log_event_table_ptr);
-	sc->umac_error_event_table = le32toh(umac->error_info_addr);
-	alive_data->scd_base_addr = le32toh(lmac1->scd_base_ptr);
+		sc->lmac_error_event_table[1] =
+			le32toh(lmac2->dbg_ptrs.error_event_table_ptr);
+	sc->log_event_table = le32toh(lmac1->dbg_ptrs.log_event_table_ptr);
+// todo
+//	sc->umac_error_event_table = le32toh(umac->error_info_addr);
+	alive_data->scd_base_addr = le32toh(lmac1->dbg_ptrs.scd_base_ptr);
 	alive_data->valid = status == IWX_ALIVE_STATUS_OK;
 	if (sc->umac_error_event_table)
 		sc->support_umac_log = TRUE;
@@ -3361,7 +3392,7 @@ static int
 iwx_wait_phy_db_entry(struct iwx_softc *sc,
 	struct iwx_rx_packet *pkt, void *data)
 {
-	struct iwx_phy_db *phy_db = data;
+//	struct iwx_phy_db *phy_db = data;
 
 	if (pkt->hdr.code != IWX_CALIB_RES_NOTIF_PHY_DB) {
 		if(pkt->hdr.code != IWX_INIT_COMPLETE_NOTIF) {
@@ -3386,9 +3417,10 @@ static int
 //	enum iwx_ucode_type ucode_type)
 iwx_load_ucode_wait_alive(struct iwx_softc *sc)
 {
+#if 0
 	struct iwx_notification_wait alive_wait;
 	struct iwx_alive_data alive_data;
-//	const struct iwx_fw_img *fw;
+	const struct iwx_fw_img *fw;
 //	enum iwx_ucode_type old_type = sc->cur_ucode;
 	int error;
 	static const uint16_t alive_cmd[] = { IWX_ALIVE };
@@ -3436,6 +3468,8 @@ iwx_load_ucode_wait_alive(struct iwx_softc *sc)
 		/* how does openbsd signal this? */
 		sc->ucode_loaded = TRUE;
 	return error;
+#endif
+	return 0;
 }
 
 /*
@@ -3449,7 +3483,7 @@ static int
 iwx_run_init_ucode(struct iwx_softc *sc, int justnvm)
 {
 	struct iwx_notification_wait calib_wait;
-	struct iwx_nvm_access_complete_cmd nvm_complete = {};
+//	struct iwx_nvm_access_complete_cmd nvm_complete = {};
 	struct iwx_init_extended_cfg_cmd init_cfg = {
 		.init_flags = htole32(IWX_INIT_NVM)};
 	static const uint16_t init_complete[] = {
@@ -3484,10 +3518,10 @@ iwx_run_init_ucode(struct iwx_softc *sc, int justnvm)
 	 * Send init config command to mark that we are sending NVM
 	 * access commands
 	 */
-	err = iwx_send_cmd_pdu(sc, IWX_WIDE_ID(IWX_SYSTEM_GROUP,
+	ret = iwx_send_cmd_pdu(sc, IWX_WIDE_ID(IWX_SYSTEM_GROUP,
 	    IWX_INIT_EXTENDED_CFG_CMD), 0, sizeof(init_cfg), &init_cfg);
-	if (err)
-		return err;
+	if (ret)
+		return ret;
 
 	if (justnvm) {
 		/* Read nvm */
@@ -3535,6 +3569,8 @@ iwx_config_ltr(struct iwx_softc *sc)
 void
 iwx_update_rx_desc(struct iwx_softc *sc, struct iwx_rx_ring *ring, int idx)
 {
+#if 0
+	// silence the compiler: build error for struct bus_dmamap_t
 	struct iwx_rx_data *data = &ring->data[idx];
 
 	((uint64_t *)ring->desc)[idx] =
@@ -3542,6 +3578,7 @@ iwx_update_rx_desc(struct iwx_softc *sc, struct iwx_rx_ring *ring, int idx)
 	bus_dmamap_sync(sc->sc_dmat, ring->free_desc_dma.map,
 	    idx * sizeof(uint64_t), sizeof(uint64_t),
 	    BUS_DMASYNC_PREWRITE);
+#endif
 }
 
 /* (re)stock rx ring, called at init-time and at runtime */
@@ -3694,7 +3731,11 @@ iwx_rx_rx_mpdu(struct iwx_softc *sc, struct mbuf *m, uint32_t offset,
 		return false;
 	}
 
+	/* todo if_iwx: sync with openbsd */
+	rssi = 0;
+#if 0
 	rssi = iwx_rx_get_signal_strength(sc, phy_info);
+#endif
 
 	/* Map it to relative value */
 	rssi = rssi - sc->sc_noise;
@@ -4256,6 +4297,7 @@ iwx_tx(struct iwx_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 //	uint8_t tid, type;
 	uint16_t num_tbs;
 	uint8_t type;
+	uint8_t tid;
 	int i, totlen, error, pad;
 
 	wh = mtod(m, struct ieee80211_frame *);
@@ -4357,11 +4399,12 @@ iwx_tx(struct iwx_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 	KASSERT(data->in != NULL, ("node is NULL"));
 
 	IWX_DPRINTF(sc, IWX_DEBUG_XMIT,
-	    "sending data: qid=%d idx=%d len=%d nsegs=%d txflags=0x%08x rate_n_flags=0x%08x rateidx=%u\n",
+//	    "sending data: qid=%d idx=%d len=%d nsegs=%d txflags=0x%08x rate_n_flags=0x%08x rateidx=%u\n",
+	    "sending data: qid=%d idx=%d len=%d nsegs=%d rate_n_flags=0x%08x\n",
 	    ring->qid, ring->cur, totlen, nsegs,
-	    le32toh(tx->tx_flags),
-	    le32toh(tx->rate_n_flags),
-	    tx->initial_rate_index
+//	    le32toh(tx->tx_flags),
+	    le32toh(tx->rate_n_flags)
+//	    tx->initial_rate_index
 	    );
 
 	/* Fill TX descriptor. */
@@ -4373,14 +4416,14 @@ iwx_tx(struct iwx_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 	paddr = htole64(data->cmd_paddr);
 	memcpy(&desc->tbs[0].addr, &paddr, sizeof(paddr));
 	if (data->cmd_paddr >> 32 != (data->cmd_paddr + le32toh(desc->tbs[0].tb_len)) >> 32)
-		IWX_DPRINTF("%s: TB0 crosses 32bit boundary\n", __func__);
+		IWX_DPRINTF(sc, IWX_DEBUG_XMIT, "%s: TB0 crosses 32bit boundary\n", __func__);
 	desc->tbs[1].tb_len = htole16(sizeof(struct iwx_cmd_header) +
 	    sizeof(*tx) + hdrlen + pad - IWX_FIRST_TB_SIZE);
 	paddr = htole64(data->cmd_paddr + IWX_FIRST_TB_SIZE);
 	memcpy(&desc->tbs[1].addr, &paddr, sizeof(paddr));
 
 	if (data->cmd_paddr >> 32 != (data->cmd_paddr + le32toh(desc->tbs[1].tb_len)) >> 32)
-		IWX_DPRINTF("%s: TB1 crosses 32bit boundary\n", __func__);
+		IWX_DPRINTF(sc, IWX_DEBUG_XMIT, "%s: TB1 crosses 32bit boundary\n", __func__);
 
 	/* Other DMA segments are for data payload. */
 	for (i = 0; i < nsegs; i++) {
@@ -4389,7 +4432,7 @@ iwx_tx(struct iwx_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 		paddr = htole64(seg->ds_addr);
 		memcpy(&desc->tbs[i + 2].addr, &paddr, sizeof(paddr));
 		if (data->cmd_paddr >> 32 != (data->cmd_paddr + le32toh(desc->tbs[i + 2].tb_len)) >> 32)
-			IWX_DPRINTF("%s: TB%d crosses 32bit boundary\n", __func__, i + 2);
+			IWX_DPRINTF(sc, IWX_DEBUG_XMIT, "%s: TB%d crosses 32bit boundary\n", __func__, i + 2);
 	}
 
 	bus_dmamap_sync(ring->data_dmat, data->map,
@@ -4568,6 +4611,7 @@ iwx_auth(struct ieee80211vap *vap, struct iwx_softc *sc)
 	struct iwx_vap *iv = IWX_VAP(vap);
 	uint32_t duration;
 	int error;
+	int generation = sc->sc_generation;
 
 	/*
 	 * XXX i have a feeling that the vap node is being
@@ -4673,13 +4717,15 @@ iwx_auth(struct ieee80211vap *vap, struct iwx_softc *sc)
 	}
 	sc->sc_firmware_state = 3;
 
+	// openbsd has code that calls iwx_enable_txq()
+
 	/* ported from openbsd */
-	err = iwx_enable_data_tx_queues(sc);
-	if (err)
+	error = iwx_enable_data_tx_queues(sc);
+	if (error)
 		goto rm_sta;
 
-	err = iwx_clear_statistics(sc);
-	if (err)
+	error = iwx_clear_statistics(sc);
+	if (error)
 		goto rm_sta;
 
 	/*
@@ -4695,7 +4741,8 @@ iwx_auth(struct ieee80211vap *vap, struct iwx_softc *sc)
 rm_sta:
 	if (generation == sc->sc_generation) {
 		iwx_rm_sta_cmd(sc, in);
-		sc->sc_flags &= ~IWX_FLAG_STA_ACTIVE;
+//		sc->sc_flags &= ~IWX_FLAG_STA_ACTIVE;
+		sc->sc_flags &= ~0x20;
 	}
 out:
 	if (error != 0)
@@ -4789,8 +4836,10 @@ iwx_setrates(struct iwx_softc *sc, struct iwx_node *in, int rix)
 //	lq->sta_id = IWX_STATION_ID;
 
 	/* For HT, always enable RTS/CTS to avoid excessive retries. */
+#ifdef not_in_iwx
 	if (ni->ni_flags & IEEE80211_NODE_HT)
 		lq->flags |= IWX_LQ_FLAG_USE_RTS_MSK;
+#endif
 
 	/*
 	 * are these used? (we don't do SISO or MIMO)
@@ -5116,7 +5165,7 @@ iwx_is_lar_supported(struct iwx_softc *sc)
 #if 0
 	if (sc->cfg->device_family >= IWM_DEVICE_FAMILY_8000)
 #endif
-	/* todo: compare against upstream whether or not this creates a bug */
+	/* todo if_iwx: compare against upstream whether or not this creates a bug */
 #if 0
 	return nvm_lar && tlv_lar;
 	else
@@ -5143,7 +5192,7 @@ iwx_send_update_mcc_cmd(struct iwx_softc *sc, const char *alpha2)
 	int ret;
 #ifdef IWX_DEBUG
 	struct iwx_rx_packet *pkt;
-	struct iwx_mcc_update_resp_v1 *mcc_resp_v1 = NULL;
+//	struct iwx_mcc_update_resp_v1 *mcc_resp_v1 = NULL;
 	struct iwx_mcc_update_resp *mcc_resp;
 	int n_channels;
 	uint16_t mcc;
@@ -5217,7 +5266,8 @@ static int
 iwx_init_hw(struct iwx_softc *sc)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
-	int error, i, ac;
+//	int error, i, ac;
+	int error, i;
 
 	sc->sf_state = IWX_SF_UNINIT;
 
@@ -5278,7 +5328,7 @@ iwx_init_hw(struct iwx_softc *sc)
 	}
 #endif
 
-	/* todo: openbsd calls iwx_send_dqa_cmd(sc) */
+	/* todo if_iwx: openbsd calls iwx_send_dqa_cmd(sc) at this point */
 
 	/* Add auxiliary station for scanning */
 	if ((error = iwx_add_aux_sta(sc)) != 0) {
@@ -5308,17 +5358,19 @@ iwx_init_hw(struct iwx_softc *sc)
 		goto error;
 
 //	if (iwx_fw_has_capa(sc, IWX_UCODE_TLV_CAPA_UMAC_SCAN)) {
-		if ((error = iwx_config_umac_scan(sc)) != 0)
-			goto error;
+	if ((error = iwx_config_umac_scan(sc)) != 0)
+		goto error;
 //	}
 
 	/* Enable Tx queues. */
+#ifdef not_in_iwx
 	for (ac = 0; ac < WME_NUM_AC; ac++) {
 		error = iwx_enable_txq(sc, IWX_STATION_ID, ac,
 		    iwx_ac_to_tx_fifo[ac]);
 		if (error)
 			goto error;
 	}
+#endif
 
 	if ((error = iwx_disable_beacon_filter(sc)) != 0) {
 		device_printf(sc->sc_dev, "failed to disable beacon filter\n");
@@ -5750,7 +5802,7 @@ static void
 iwx_handle_rxb(struct iwx_softc *sc, struct mbuf *m)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
-	struct iwx_cmd_response *cresp;
+//	struct iwx_cmd_response *cresp;
 	struct mbuf *m1;
 	uint32_t offset = 0;
 	uint32_t maxoff = IWX_RBUF_SIZE;
@@ -6090,7 +6142,7 @@ iwx_handle_rxb(struct iwx_softc *sc, struct mbuf *m)
 static void
 iwx_notif_intr(struct iwx_softc *sc)
 {
-//	int count;
+	int count = 0;
 //	uint32_t wreg;
 	uint16_t hw;
 
@@ -6312,7 +6364,7 @@ static const struct iwx_devices {
 	uint16_t		device;
 	const struct iwx_cfg	*cfg;
 } iwx_devices[] = {
-	{ PCI_PRODUCT_INTEL_WL_22500_1, &iwx22500_cfg },
+	{ PCI_PRODUCT_INTEL_WL_22500_1, &iwx22000_cfg },
 };
 
 static int
@@ -6437,7 +6489,9 @@ iwx_attach(device_t dev)
 	IWX_LOCK_INIT(sc);
 	mbufq_init(&sc->sc_snd, ifqmaxlen);
 	callout_init_mtx(&sc->sc_watchdog_to, &sc->sc_mtx, 0);
+#ifdef HAS_LED
 	callout_init_mtx(&sc->sc_led_blink_to, &sc->sc_mtx, 0);
+#endif
 	TASK_INIT(&sc->sc_es_task, 0, iwx_endscan_cb, sc);
 
 	error = iwx_dev_check(dev);
@@ -7026,7 +7080,9 @@ iwx_detach_local(struct iwx_softc *sc, int do_net80211)
 		IWX_UNLOCK(sc);
 		ieee80211_ifdetach(&sc->sc_ic);
 	}
+#ifdef HAS_LED
 	callout_drain(&sc->sc_led_blink_to);
+#endif
 	callout_drain(&sc->sc_watchdog_to);
 
 	iwx_phy_db_free(sc->sc_phy_db);
@@ -7046,7 +7102,9 @@ iwx_detach_local(struct iwx_softc *sc, int do_net80211)
 	/* Free scheduler */
 	iwx_dma_contig_free(&sc->sched_dma);
 	iwx_dma_contig_free(&sc->ict_dma);
+#ifdef not_in_iwx
 	iwx_dma_contig_free(&sc->kw_dma);
+#endif
 	iwx_dma_contig_free(&sc->fw_dma);
 
 	iwx_free_fw_paging(sc);

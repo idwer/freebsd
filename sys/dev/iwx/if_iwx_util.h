@@ -129,12 +129,10 @@ extern	int iwx_clear_statistics(struct iwx_softc *sc);
 extern	boolean_t iwx_rx_diversity_allowed(struct iwx_softc *sc);
 
 extern	uint8_t iwx_ridx2rate(struct ieee80211_rateset *rs, int ridx);
-// extern	int iwx_enable_txq(struct iwx_softc *sc, int sta_id, int qid, int fifo);
 /* this is a verbatim copy/paste from openbsd */
 extern int iwx_enable_txq(struct iwx_softc *sc, int sta_id, int qid, int tid,
     int num_slots);
-extern	int iwx_flush_tx_path(struct iwx_softc *sc, uint32_t tfd_msk,
-				  uint32_t flags);
+extern	int iwx_flush_tx_path(struct iwx_softc *sc, uint32_t flags);
 
 static inline uint8_t
 iwx_get_valid_tx_ant(struct iwx_softc *sc)
