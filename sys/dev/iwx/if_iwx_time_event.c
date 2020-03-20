@@ -163,16 +163,16 @@ __FBSDID("$FreeBSD$");
 
 #define TU_TO_HZ(tu)	(((uint64_t)(tu) * 1024 * hz) / 1000000)
 
-#if 0
 static void
-iwm_te_clear_data(struct iwm_softc *sc)
+iwx_te_clear_data(struct iwx_softc *sc)
 {
 	sc->sc_time_event_uid = 0;
 	sc->sc_time_event_duration = 0;
 	sc->sc_time_event_end_ticks = 0;
-	sc->sc_flags &= ~IWM_FLAG_TE_ACTIVE;
+	sc->sc_flags &= ~IWX_FLAG_TE_ACTIVE;
 }
 
+#if 0
 /*
  * Handles a FW notification for an event that is known to the driver.
  *
@@ -229,17 +229,18 @@ iwm_rx_time_event_notif(struct iwm_softc *sc, struct iwm_rx_packet *pkt)
 
 	iwm_te_handle_notif(sc, notif);
 }
+#endif
 
 static int
-iwm_te_notif(struct iwm_softc *sc, struct iwm_rx_packet *pkt,
+iwx_te_notif(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
     void *data)
 {
-	struct iwm_time_event_notif *resp;
-	int resp_len = iwm_rx_packet_payload_len(pkt);
+	struct iwx_time_event_notif *resp;
+	int resp_len = iwx_rx_packet_payload_len(pkt);
 
-	if (pkt->hdr.code != IWM_TIME_EVENT_NOTIFICATION ||
+	if (pkt->hdr.code != IWX_TIME_EVENT_NOTIFICATION ||
 	    resp_len != sizeof(*resp)) {
-		IWM_DPRINTF(sc, IWM_DEBUG_TE,
+		IWX_DPRINTF(sc, IWX_DEBUG_TE,
 		    "Invalid TIME_EVENT_NOTIFICATION response\n");
 		return 1;
 	}
@@ -250,11 +251,11 @@ iwm_te_notif(struct iwm_softc *sc, struct iwm_rx_packet *pkt,
 	if (le32toh(resp->unique_id) != sc->sc_time_event_uid)
 		return false;
 
-	IWM_DPRINTF(sc, IWM_DEBUG_TE,
+	IWX_DPRINTF(sc, IWX_DEBUG_TE,
 	    "TIME_EVENT_NOTIFICATION response - UID = 0x%x\n",
 	    sc->sc_time_event_uid);
 	if (!resp->status) {
-		IWM_DPRINTF(sc, IWM_DEBUG_TE,
+		IWX_DPRINTF(sc, IWX_DEBUG_TE,
 		    "TIME_EVENT_NOTIFICATION received but not executed\n");
 	}
 
@@ -262,15 +263,15 @@ iwm_te_notif(struct iwm_softc *sc, struct iwm_rx_packet *pkt,
 }
 
 static int
-iwm_time_event_response(struct iwm_softc *sc, struct iwm_rx_packet *pkt,
+iwx_time_event_response(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
     void *data)
 {
-	struct iwm_time_event_resp *resp;
-	int resp_len = iwm_rx_packet_payload_len(pkt);
+	struct iwx_time_event_resp *resp;
+	int resp_len = iwx_rx_packet_payload_len(pkt);
 
-	if (pkt->hdr.code != IWM_TIME_EVENT_CMD ||
+	if (pkt->hdr.code != IWX_TIME_EVENT_CMD ||
 	    resp_len != sizeof(*resp)) {
-		IWM_DPRINTF(sc, IWM_DEBUG_TE,
+		IWX_DPRINTF(sc, IWX_DEBUG_TE,
 		    "Invalid TIME_EVENT_CMD response\n");
 		return 1;
 	}
@@ -278,19 +279,18 @@ iwm_time_event_response(struct iwm_softc *sc, struct iwm_rx_packet *pkt,
 	resp = (void *)pkt->data;
 
 	/* we should never get a response to another TIME_EVENT_CMD here */
-	if (le32toh(resp->id) != IWM_TE_BSS_STA_AGGRESSIVE_ASSOC) {
-		IWM_DPRINTF(sc, IWM_DEBUG_TE,
+	if (le32toh(resp->id) != IWX_TE_BSS_STA_AGGRESSIVE_ASSOC) {
+		IWX_DPRINTF(sc, IWX_DEBUG_TE,
 		    "Got TIME_EVENT_CMD response with wrong id: %d\n",
 		    le32toh(resp->id));
 		return 0;
 	}
 
 	sc->sc_time_event_uid = le32toh(resp->unique_id);
-	IWM_DPRINTF(sc, IWM_DEBUG_TE,
+	IWX_DPRINTF(sc, IWX_DEBUG_TE,
 	    "TIME_EVENT_CMD response - UID = 0x%x\n", sc->sc_time_event_uid);
 	return 1;
 }
-#endif
 
 /* XXX Use the te_data function argument properly, like in iwlwifi's code. */
 
@@ -373,7 +373,7 @@ iwx_protect_session(struct iwx_softc *sc, struct iwx_vap *ivp,
 	time_cmd.policy
 	    = htole16(IWX_TE_V2_NOTIF_HOST_EVENT_START |
 	        IWX_TE_V2_NOTIF_HOST_EVENT_END |
-		IWX_T2_V2_START_IMMEDIATELY);
+		IWX_TE_V2_START_IMMEDIATELY);
 
 	if (!wait_for_notif) {
 		iwx_time_event_send_add(sc, ivp, /*te_data*/NULL, &time_cmd);

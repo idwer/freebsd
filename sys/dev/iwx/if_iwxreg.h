@@ -1098,6 +1098,35 @@ struct iwx_tlv_ucode_header {
 #define IWX_PRPH_BASE	(0x00000)
 #define IWM_PRPH_END	(0xFFFFF)
 
+/* APMG (power management) constants */
+#define IWX_APMG_BASE			(IWX_PRPH_BASE + 0x3000)
+#define IWM_APMG_CLK_CTRL_REG		(IWM_APMG_BASE + 0x0000)
+#define IWM_APMG_CLK_EN_REG		(IWM_APMG_BASE + 0x0004)
+#define IWM_APMG_CLK_DIS_REG		(IWM_APMG_BASE + 0x0008)
+#define IWX_APMG_PS_CTRL_REG		(IWX_APMG_BASE + 0x000c)
+#define IWM_APMG_PCIDEV_STT_REG		(IWM_APMG_BASE + 0x0010)
+#define IWM_APMG_RFKILL_REG		(IWM_APMG_BASE + 0x0014)
+#define IWM_APMG_RTC_INT_STT_REG	(IWM_APMG_BASE + 0x001c)
+#define IWM_APMG_RTC_INT_MSK_REG	(IWM_APMG_BASE + 0x0020)
+#define IWM_APMG_DIGITAL_SVR_REG	(IWM_APMG_BASE + 0x0058)
+#define IWM_APMG_ANALOG_SVR_REG		(IWM_APMG_BASE + 0x006C)
+
+#define IWM_APMS_CLK_VAL_MRB_FUNC_MODE	(0x00000001)
+#define IWM_APMG_CLK_VAL_DMA_CLK_RQT	(0x00000200)
+#define IWM_APMG_CLK_VAL_BSM_CLK_RQT	(0x00000800)
+
+#define IWM_APMG_PS_CTRL_EARLY_PWR_OFF_RESET_DIS	(0x00400000)
+#define IWM_APMG_PS_CTRL_VAL_RESET_REQ			(0x04000000)
+#define IWX_APMG_PS_CTRL_MSK_PWR_SRC			(0x03000000)
+#define IWX_APMG_PS_CTRL_VAL_PWR_SRC_VMAIN		(0x00000000)
+#define IWM_APMG_PS_CTRL_VAL_PWR_SRC_VAUX		(0x02000000)
+#define IWM_APMG_SVR_VOLTAGE_CONFIG_BIT_MSK		(0x000001E0) /* bit 8:5 */
+#define IWM_APMG_SVR_DIGITAL_VOLTAGE_1_32		(0x00000060)
+
+#define IWM_APMG_PCIDEV_STT_VAL_L1_ACT_DIS		(0x00000800)
+
+#define IWM_APMG_RTC_INT_STT_RFKILL			(0x10000000)
+
 /*
  * Device reset for family 8000
  * write to bit 24 in order to reset the CPU
@@ -1536,7 +1565,7 @@ struct iwx_gen3_bc_tbl {
 enum {
 	IWM_OFFCHANNEL_QUEUE = 8,
 	IWX_CMD_QUEUE = 9,
-	IWM_AUX_QUEUE = 15,
+	IWX_AUX_QUEUE = 15,
 };
 
 enum iwm_tx_fifo {
@@ -1683,9 +1712,21 @@ enum {
 	IWX_TIME_QUOTA_CMD = 0x2c,
 	IWM_NON_QOS_TX_COUNTER_CMD = 0x2d,
 
+	IWX_LQ_CMD = 0x4e,
+
+	/* Scan offload */
+	IWM_SCAN_OFFLOAD_REQUEST_CMD = 0x51,
+	IWX_SCAN_OFFLOAD_ABORT_CMD = 0x52,
+	IWM_HOT_SPOT_CMD = 0x53,
+	IWX_SCAN_OFFLOAD_COMPLETE = 0x6d,
+	IWM_SCAN_OFFLOAD_UPDATE_PROFILES_CMD = 0x6e,
+	IWM_SCAN_OFFLOAD_CONFIG_CMD = 0x6f,
+	IWM_MATCH_FOUND_NOTIFICATION = 0xd9,
+	IWM_SCAN_ITERATION_COMPLETE = 0xe7,
+
 	/* Phy */
-	IWX_PHY_CONFIGURATION_CMD = 0x6a,
-	IWX_CALIB_RES_NOTIF_PHY_DB = 0x6b,
+IWX_PHY_CONFIGURATION_CMD = 0x6a,
+IWX_CALIB_RES_NOTIF_PHY_DB = 0x6b,
 
 	/* Power - legacy power table command */
 	IWX_POWER_TABLE_CMD = 0x77,
@@ -2624,9 +2665,9 @@ enum {
 /* Time Events */
 
 /* Time Event types, according to MAC type */
-enum iwm_time_event_type {
+enum iwx_time_event_type {
 	/* BSS Station Events */
-	IWM_TE_BSS_STA_AGGRESSIVE_ASSOC,
+	IWX_TE_BSS_STA_AGGRESSIVE_ASSOC,
 	IWM_TE_BSS_STA_ASSOC,
 	IWM_TE_BSS_EAP_DHCP_PROT,
 	IWM_TE_BSS_QUIET_PERIOD,
@@ -2667,7 +2708,7 @@ enum iwm_time_event_type {
  * scheduled.
  */
 enum {
-	IWM_TE_V2_FRAG_NONE = 0,
+	IWX_TE_V2_FRAG_NONE = 0,
 	IWM_TE_V2_FRAG_SINGLE = 1,
 	IWM_TE_V2_FRAG_DUAL = 2,
 	IWM_TE_V2_FRAG_MAX = 0xfe,
@@ -2706,8 +2747,8 @@ enum {
 	IWM_TE_V2_DEFAULT_POLICY = 0x0,
 
 	/* notifications (event start/stop, fragment start/stop) */
-	IWM_TE_V2_NOTIF_HOST_EVENT_START = (1 << 0),
-	IWM_TE_V2_NOTIF_HOST_EVENT_END = (1 << 1),
+	IWX_TE_V2_NOTIF_HOST_EVENT_START = (1 << 0),
+	IWX_TE_V2_NOTIF_HOST_EVENT_END = (1 << 1),
 	IWM_TE_V2_NOTIF_INTERNAL_EVENT_START = (1 << 2),
 	IWM_TE_V2_NOTIF_INTERNAL_EVENT_END = (1 << 3),
 
@@ -2715,6 +2756,7 @@ enum {
 	IWM_TE_V2_NOTIF_HOST_FRAG_END = (1 << 5),
 	IWM_TE_V2_NOTIF_INTERNAL_FRAG_START = (1 << 6),
 	IWM_TE_V2_NOTIF_INTERNAL_FRAG_END = (1 << 7),
+	IWX_TE_V2_START_IMMEDIATELY = (1 << 11),
 
 	IWM_TE_V2_NOTIF_MSK = 0xff,
 
@@ -2751,7 +2793,7 @@ enum {
  *	IWM_TE_EVENT_SOCIOPATHIC
  *	using IWM_TE_ABSENCE and using IWM_TE_NOTIF_*
  */
-struct iwm_time_event_cmd {
+struct iwx_time_event_cmd {
 	/* COMMON_INDEX_HDR_API_S_VER_1 */
 	uint32_t id_and_color;
 	uint32_t action;
@@ -2774,7 +2816,7 @@ struct iwm_time_event_cmd {
  * @unique_id: the unique ID assigned (in ADD) or given (others) to the TE
  * @id_and_color: ID and color of the relevant MAC
  */
-struct iwm_time_event_resp {
+struct iwx_time_event_resp {
 	uint32_t status;
 	uint32_t id;
 	uint32_t unique_id;
@@ -2791,7 +2833,7 @@ struct iwm_time_event_resp {
  * @action: one of IWM_TE_NOTIF_START or IWM_TE_NOTIF_END
  * @status: true if scheduled, false otherwise (not executed)
  */
-struct iwm_time_event_notif {
+struct iwx_time_event_notif {
 	uint32_t timestamp;
 	uint32_t session_id;
 	uint32_t unique_id;
@@ -3539,10 +3581,10 @@ struct iwx_notif_statistics_v13 {
  * @IWX_STATISTICS_FLG_DISABLE_NOTIF: disable unilateral statistics
  *	notifications
  */
-#define IWM_STATISTICS_FLG_CLEAR		0x1
+#define IWX_STATISTICS_FLG_CLEAR		0x1
 #define IWM_STATISTICS_FLG_DISABLE_NOTIF	0x2
 
-struct iwm_statistics_cmd {
+struct iwx_statistics_cmd {
 	uint32_t flags;
 } __packed; /* IWM_STATISTICS_CMD_API_S_VER_1 */
 
@@ -4548,6 +4590,49 @@ enum {
  */
 #define IWM_LQ_SS_PARAMS_VALID_POS	31
 #define IWM_LQ_SS_PARAMS_VALID		(1 << IWM_LQ_SS_PARAMS_VALID_POS)
+
+/**
+ * struct iwm_lq_cmd - link quality command
+ * @sta_id: station to update
+ * @control: not used
+ * @flags: combination of IWM_LQ_FLAG_*
+ * @mimo_delim: the first SISO index in rs_table, which separates MIMO
+ *	and SISO rates
+ * @single_stream_ant_msk: best antenna for SISO (can be dual in CDD).
+ *	Should be ANT_[ABC]
+ * @dual_stream_ant_msk: best antennas for MIMO, combination of ANT_[ABC]
+ * @initial_rate_index: first index from rs_table per AC category
+ * @agg_time_limit: aggregation max time threshold in usec/100, meaning
+ *	value of 100 is one usec. Range is 100 to 8000
+ * @agg_disable_start_th: try-count threshold for starting aggregation.
+ *	If a frame has higher try-count, it should not be selected for
+ *	starting an aggregation sequence.
+ * @agg_frame_cnt_limit: max frame count in an aggregation.
+ *	0: no limit
+ *	1: no aggregation (one frame per aggregation)
+ *	2 - 0x3f: maximal number of frames (up to 3f == 63)
+ * @rs_table: array of rates for each TX try, each is rate_n_flags,
+ *	meaning it is a combination of IWM_RATE_MCS_* and IWM_RATE_*_PLCP
+ * @ss_params: single stream features. declare whether STBC or BFER are allowed.
+ */
+struct iwx_lq_cmd {
+	uint8_t sta_id;
+	uint8_t reduced_tpc;
+	uint16_t control;
+	/* LINK_QUAL_GENERAL_PARAMS_API_S_VER_1 */
+	uint8_t flags;
+	uint8_t mimo_delim;
+	uint8_t single_stream_ant_msk;
+	uint8_t dual_stream_ant_msk;
+	uint8_t initial_rate_index[IWX_AC_NUM];
+	/* LINK_QUAL_AGG_PARAMS_API_S_VER_1 */
+	uint16_t agg_time_limit;
+	uint8_t agg_disable_start_th;
+	uint8_t agg_frame_cnt_limit;
+	uint32_t reserved2;
+	uint32_t rs_table[IWX_LQ_MAX_RETRY_NUM];
+	uint32_t ss_params;
+}; /* LINK_QUALITY_CMD_API_S_VER_1 */
 
 /*
  * END mvm/fw-api-rs.h
@@ -6414,19 +6499,19 @@ struct iwm_dts_measurement_notif_v2 {
  * and the version of the command and vice versa.
 */
 static inline uint8_t
-iwm_cmd_opcode(uint32_t cmdid)
+iwx_cmd_opcode(uint32_t cmdid)
 {
 	return cmdid & 0xff;
 }
 
 static inline uint8_t
-iwm_cmd_groupid(uint32_t cmdid)
+iwx_cmd_groupid(uint32_t cmdid)
 {
 	return ((cmdid & 0xff00) >> 8);
 }
 
 static inline uint8_t
-iwm_cmd_version(uint32_t cmdid)
+iwx_cmd_version(uint32_t cmdid)
 {
 	return ((cmdid & 0xff0000) >> 16);
 }
@@ -6473,7 +6558,7 @@ enum iwx_power_scheme {
 };
 
 #define IWX_DEF_CMD_PAYLOAD_SIZE 320
-#define IWM_MAX_CMD_PAYLOAD_SIZE ((4096 - 4) - sizeof(struct iwm_cmd_header))
+#define IWX_MAX_CMD_PAYLOAD_SIZE ((4096 - 4) - sizeof(struct iwx_cmd_header))
 #define IWX_CMD_FAILED_MSK 0x40
 
 /**

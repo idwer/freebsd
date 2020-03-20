@@ -87,7 +87,8 @@ __FBSDID("$FreeBSD$");
 
 #define IWX_DEVICE_22000_COMMON						\
 	.device_family = IWX_DEVICE_FAMILY_22000,			\
-	.eeprom_size = IWX_OTP_LOW_IMAGE_SIZE_FAMILY_22000,		\
+	.eeprom_size = IWX_OTP_LOW_IMAGE_SIZE_FAMILY_22000
+/* don't forget to end the above line with ,\ */
 //	.nvm_hw_section_num = IWX_NVM_HW_SECTION_NUM_FAMILY_22000
 
 const struct iwx_cfg iwx22000_cfg = {
