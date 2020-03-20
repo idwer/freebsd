@@ -208,7 +208,8 @@ iwx_phy_ctxt_cmd_data(struct iwx_softc *sc,
 	    iwx_get_valid_rx_ant(sc),
 	    iwx_get_valid_tx_ant(sc));
 
-	if (isset(sc->sc_enabled_capa, IWX_UCODE_TLV_CAPA_ULTRA_HB_CHANNELS)) {
+//	if (isset(sc->sc_enabled_capa, IWX_UCODE_TLV_CAPA_ULTRA_HB_CHANNELS)) {
+	if (iwx_fw_has_capa(sc, IWX_UCODE_TLV_CAPA_ULTRA_HB_CHANNELS)) {
 		cmd->ci.band = IEEE80211_IS_CHAN_2GHZ(chan) ?
 		    IWX_PHY_BAND_24 : IWX_PHY_BAND_5;
 		cmd->ci.channel = htole32(ieee80211_chan2ieee(ic, chan));
@@ -282,7 +283,8 @@ iwx_phy_ctxt_apply(struct iwx_softc *sc,
 	    chains_static, chains_dynamic);
 
 	len = sizeof(struct iwx_phy_context_cmd);
-	if (!isset(sc->sc_enabled_capa, IWX_UCODE_TLV_CAPA_ULTRA_HB_CHANNELS))
+//	if (!isset(sc->sc_enabled_capa, IWX_UCODE_TLV_CAPA_ULTRA_HB_CHANNELS))
+	if (!iwx_fw_has_capa(sc, IWX_UCODE_TLV_CAPA_ULTRA_HB_CHANNELS))
 		len -= (sizeof(struct iwx_fw_channel_info) -
 		    sizeof(struct iwx_fw_channel_info_v1));
 	ret = iwx_send_cmd_pdu(sc, IWX_PHY_CONTEXT_CMD, 0, len, &cmd);

@@ -122,8 +122,8 @@ extern	int iwx_dma_contig_alloc(bus_dma_tag_t tag, struct iwx_dma_info *dma,
 				 bus_size_t size, bus_size_t alignment);
 extern	void iwx_dma_contig_free(struct iwx_dma_info *);
 
-//extern	int iwx_send_lq_cmd(struct iwx_softc *sc, struct iwx_lq_cmd *lq,
-//				boolean_t init);
+extern	int iwx_send_lq_cmd(struct iwx_softc *sc, struct iwx_lq_cmd *lq,
+				boolean_t init);
 
 extern	int iwx_clear_statistics(struct iwx_softc *sc);
 extern	boolean_t iwx_rx_diversity_allowed(struct iwx_softc *sc);

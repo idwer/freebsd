@@ -697,9 +697,9 @@ iwx_set_pwr(struct iwx_softc *sc)
 int
 iwx_pcie_rx_stop(struct iwx_softc *sc)
 {
-	int ret;
+	int ret = 0;
 
-	ret = 0;
+	int ntries;
 	if (iwx_nic_lock(sc)) {
 		iwx_write_prph(sc, IWX_RFH_RXF_DMA_CFG, 0);
 		for (ntries = 0; ntries < 1000; ntries++) {
@@ -716,6 +716,7 @@ iwx_pcie_rx_stop(struct iwx_softc *sc)
 void
 iwx_pcie_clear_cmd_in_flight(struct iwx_softc *sc)
 {
+#ifdef tbd
 	if (!sc->cfg->apmg_wake_up_wa)
 		return;
 
@@ -726,6 +727,7 @@ iwx_pcie_clear_cmd_in_flight(struct iwx_softc *sc)
 	}
 
 	sc->cmd_hold_nic_awake = 0;
+#endif
 	IWX_CLRBITS(sc, IWX_CSR_GP_CNTRL,
 			IWX_CSR_GP_CNTRL_REG_FLAG_MAC_ACCESS_REQ);
 }
@@ -733,8 +735,8 @@ iwx_pcie_clear_cmd_in_flight(struct iwx_softc *sc)
 int
 iwx_pcie_set_cmd_in_flight(struct iwx_softc *sc)
 {
+#ifdef tbd
 	int ret;
-
 	/*
 	 * wake up the NIC to make sure that the firmware will see the host
 	 * command - we will let the NIC sleep once all the host commands
@@ -761,6 +763,7 @@ iwx_pcie_set_cmd_in_flight(struct iwx_softc *sc)
 		}
 		sc->cmd_hold_nic_awake = 1;
 	}
+#endif
 
 	return 0;
 }

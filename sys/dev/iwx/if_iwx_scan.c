@@ -643,7 +643,7 @@ iwx_umac_scan(struct iwm_softc *sc)
 }
 #endif
 
-#ifdef not_in_iwx
+//#ifdef not_in_iwx
 static int
 iwx_lmac_scan_abort(struct iwx_softc *sc)
 {
@@ -675,7 +675,7 @@ iwx_lmac_scan_abort(struct iwx_softc *sc)
 
 	return ret;
 }
-#endif
+//#endif
 
 static int
 iwx_umac_scan_abort(struct iwx_softc *sc)
@@ -695,7 +695,8 @@ iwx_umac_scan_abort(struct iwx_softc *sc)
 
 	return ret;
 }
-
+int	iwx_scan_abort(struct iwx_softc *);
+ 
 int
 iwx_scan_abort(struct iwx_softc *sc)
 {
@@ -707,6 +708,7 @@ iwx_scan_abort(struct iwx_softc *sc)
 	return err;
 }
 
+#ifdef not_in_iwx
 int
 iwx_enable_data_tx_queues(struct iwx_softc *sc)
 {
@@ -728,6 +730,7 @@ iwx_enable_data_tx_queues(struct iwx_softc *sc)
 
 	return 0;
 }
+#endif
 
 int
 iwx_scan_stop_wait(struct iwx_softc *sc)

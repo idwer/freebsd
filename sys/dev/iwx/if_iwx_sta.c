@@ -137,12 +137,14 @@ __FBSDID("$FreeBSD$");
  * structure, so sending the size of the relevant API's structure is enough to
  * support both API versions.
  */
+#ifdef tbd
 static inline int
 iwx_add_sta_cmd_size(struct iwx_softc *sc)
 {
 	return sc->cfg->mqrx_supported ? sizeof(struct iwx_add_sta_cmd) :
 	    sizeof(struct iwx_add_sta_cmd_v7);
 }
+#endif
 
 /* send station add/update command to firmware */
 int
@@ -159,7 +161,7 @@ iwx_sta_send_to_fw(struct iwx_softc *sc, struct iwx_node *in,
 					     IWX_STA_FLG_MIMO_EN_MSK),
 		.tid_disable_tx = htole16(0xffff),
 	};
-	int ret;
+	int ret = 0;
 	uint32_t status;
 	uint32_t agg_size = 0, mpdu_dens = 0;
 
@@ -178,11 +180,13 @@ iwx_sta_send_to_fw(struct iwx_softc *sc, struct iwx_node *in,
 		htole32(mpdu_dens << IWX_STA_FLG_AGG_MPDU_DENS_SHIFT);
 
 	status = IWX_ADD_STA_SUCCESS;
+#ifdef tbd
 	ret = iwx_send_cmd_pdu_status(sc, IWX_ADD_STA,
 					  iwx_add_sta_cmd_size(sc),
 					  &add_sta_cmd, &status);
 	if (ret)
 		return ret;
+#endif
 
 	switch (status & IWX_ADD_STA_STATUS_MASK) {
 	case IWX_ADD_STA_SUCCESS:
@@ -213,7 +217,7 @@ int
 iwx_drain_sta(struct iwx_softc *sc, struct iwx_vap *ivp, boolean_t drain)
 {
 	struct iwx_add_sta_cmd cmd = {};
-	int ret;
+	int ret = 0;
 	uint32_t status;
 
 	cmd.mac_id_n_color =
@@ -224,9 +228,11 @@ iwx_drain_sta(struct iwx_softc *sc, struct iwx_vap *ivp, boolean_t drain)
 	cmd.station_flags_msk = htole32(IWX_STA_FLG_DRAIN_FLOW);
 
 	status = IWX_ADD_STA_SUCCESS;
+#ifdef tbd
 	ret = iwx_send_cmd_pdu_status(sc, IWX_ADD_STA,
 					  iwx_add_sta_cmd_size(sc),
 					  &cmd, &status);
+#endif
 	if (ret)
 		return ret;
 
@@ -273,7 +279,7 @@ int
 iwx_rm_sta(struct iwx_softc *sc, struct ieee80211vap *vap,
 	boolean_t is_assoc)
 {
-//	uint32_t tfd_queue_msk = 0;
+	uint32_t tfd_queue_msk = 0;
 	int ret;
 	int ac;
 
@@ -319,14 +325,16 @@ iwx_add_int_sta_common(struct iwx_softc *sc, struct iwx_int_sta *sta,
     const uint8_t *addr, uint16_t mac_id, uint16_t color)
 {
 	struct iwx_add_sta_cmd cmd;
-	int ret;
-	uint32_t status;
+	int ret = 0;
+	uint32_t status = 0;
 
 	memset(&cmd, 0, sizeof(cmd));
 	cmd.sta_id = sta->sta_id;
 	cmd.mac_id_n_color = htole32(IWX_FW_CMD_ID_AND_COLOR(mac_id, color));
+#ifdef not_in_iwx
 	if (sta->sta_id == IWX_AUX_STA_ID && sc->cfg->mqrx_supported)
 		cmd.station_type = IWX_STA_AUX_ACTIVITY;
+#endif
 
 	cmd.tfd_queue_msk = htole32(sta->tfd_queue_msk);
 	cmd.tid_disable_tx = htole16(0xffff);
@@ -334,9 +342,11 @@ iwx_add_int_sta_common(struct iwx_softc *sc, struct iwx_int_sta *sta,
 	if (addr)
 		IEEE80211_ADDR_COPY(cmd.addr, addr);
 
+#ifdef tbd
 	ret = iwx_send_cmd_pdu_status(sc, IWX_ADD_STA,
 					  iwx_add_sta_cmd_size(sc),
 					  &cmd, &status);
+#endif
 	if (ret)
 		return ret;
 
@@ -363,7 +373,7 @@ iwx_add_aux_sta(struct iwx_softc *sc)
 
 	/* Map Aux queue to fifo - needs to happen before adding Aux station */
 	ret = iwx_enable_txq(sc, IWX_AUX_STA_ID, IWX_DQA_AUX_QUEUE,
-			IWX_MGMT_ID, IWX_TX_RING_COUNT);
+			IWX_MGMT_TID, IWX_TX_RING_COUNT);
 	if (ret)
 		return ret;
 
@@ -373,7 +383,9 @@ iwx_add_aux_sta(struct iwx_softc *sc)
 	if (ret) {
 		memset(&sc->sc_aux_sta, 0, sizeof(sc->sc_aux_sta));
 		sc->sc_aux_sta.sta_id = IWX_STATION_COUNT;
+#ifdef tbd
 		sc->sc_aux_sta.station_type = IWX_STA_AUX_ACTIVITY;
+#endif
 	}
 	return ret;
 }

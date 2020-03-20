@@ -426,7 +426,7 @@ struct iwx_node {
 	/* status "bits" */
 	int			in_assoc;
 
-//	struct iwx_lq_cmd	in_lq;
+	struct iwx_lq_cmd	in_lq;
 };
 #define IWX_NODE(_ni)		((struct iwx_node *)(_ni))
 

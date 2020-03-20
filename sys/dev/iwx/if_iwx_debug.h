@@ -46,7 +46,7 @@ enum {
 	IWX_DEBUG_TEMP		= 0x00100000,	/* Thermal Sensor handling */
 	IWX_DEBUG_FW		= 0x00200000,	/* Firmware management */
 	IWX_DEBUG_LAR		= 0x00400000,	/* Location Aware Regulatory */
-	IWM_DEBUG_TE		= 0x00800000,	/* Time Event handling */
+	IWX_DEBUG_TE		= 0x00800000,	/* Time Event handling */
 	IWM_DEBUG_REGISTER	= 0x20000000,	/* print chipset register */
 	IWX_DEBUG_TRACE		= 0x40000000,	/* Print begin and start driver function */
 	IWM_DEBUG_FATAL		= 0x80000000,	/* fatal errors */

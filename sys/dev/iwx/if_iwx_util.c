@@ -524,8 +524,11 @@ iwx_clear_statistics(struct iwx_softc *sc)
 		.id = IWX_STATISTICS_CMD,
 		.len[0] = sizeof(scmd),
 		.data[0] = &scmd,
-		.flags = IWX_CMD_WANT_RESP,
+//		.flags = IWX_CMD_WANT_RESP,
+		.flags = IWX_CMD_WANT_SKB,
+#ifdef not_in_iwx
 		.resp_pkt_len = sizeof(struct iwx_notif_statistics),
+#endif
 	};
 	int err;
 
