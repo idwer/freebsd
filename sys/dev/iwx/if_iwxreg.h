@@ -652,7 +652,7 @@ enum iwx_ucode_tlv_flag {
 	IWM_UCODE_TLV_FLAGS_NEW_NSOFFL_SMALL	= (1 << 15),
 	IWM_UCODE_TLV_FLAGS_NEW_NSOFFL_LARGE	= (1 << 16),
 	IWM_UCODE_TLV_FLAGS_UAPSD_SUPPORT	= (1 << 24),
-	IWM_UCODE_TLV_FLAGS_EBS_SUPPORT		= (1 << 25),
+	IWX_UCODE_TLV_FLAGS_EBS_SUPPORT		= (1 << 25),
 	IWM_UCODE_TLV_FLAGS_P2P_PS_UAPSD	= (1 << 26),
 	IWM_UCODE_TLV_FLAGS_BCAST_FILTERING	= (1 << 29),
 };
@@ -717,14 +717,14 @@ enum iwx_ucode_tlv_api {
 	IWM_UCODE_TLV_API_TKIP_MIC_KEYS		= 29,
 	IWM_UCODE_TLV_API_STA_TYPE		= 30,
 	IWM_UCODE_TLV_API_NAN2_VER2		= 31,
-	IWM_UCODE_TLV_API_ADAPTIVE_DWELL	= 32,
+	IWX_UCODE_TLV_API_ADAPTIVE_DWELL	= 32,
 	IWM_UCODE_TLV_API_OCE			= 33,
 	IWM_UCODE_TLV_API_NEW_BEACON_TEMPLATE	= 34,
 	IWM_UCODE_TLV_API_NEW_RX_STATS		= 35,
 	IWM_UCODE_TLV_API_WOWLAN_KEY_MATERIAL	= 36,
 	IWM_UCODE_TLV_API_QUOTA_LOW_LATENCY	= 38,
 	IWM_UCODE_TLV_API_DEPRECATE_TTAK	= 41,
-	IWM_UCODE_TLV_API_ADAPTIVE_DWELL_V2	= 42,
+	IWX_UCODE_TLV_API_ADAPTIVE_DWELL_V2	= 42,
 	IWM_UCODE_TLV_API_FRAG_EBS		= 44,
 	IWM_UCODE_TLV_API_REDUCE_TX_POWER	= 45,
 	IWM_UCODE_TLV_API_SHORT_BEACON_NOTIF	= 46,
@@ -812,7 +812,7 @@ enum iwx_ucode_tlv_capa {
 	IWM_UCODE_TLV_CAPA_TOF_SUPPORT                  = 5,
 	IWM_UCODE_TLV_CAPA_TDLS_SUPPORT			= 6,
 	IWM_UCODE_TLV_CAPA_TXPOWER_INSERTION_SUPPORT	= 8,
-	IWM_UCODE_TLV_CAPA_DS_PARAM_SET_IE_SUPPORT	= 9,
+	IWX_UCODE_TLV_CAPA_DS_PARAM_SET_IE_SUPPORT	= 9,
 	IWM_UCODE_TLV_CAPA_WFA_TPC_REP_IE_SUPPORT	= 10,
 	IWM_UCODE_TLV_CAPA_QUIET_PERIOD_SUPPORT		= 11,
 	IWM_UCODE_TLV_CAPA_DQA_SUPPORT			= 12,
@@ -5289,7 +5289,7 @@ struct iwx_scd_txq_cfg_rsp {
 #define IWM_SCAN_CHANNEL_NSSIDS(x)	(((1 << (x)) - 1) << 1)
 
 /* Max number of IEs for direct SSID scans in a command */
-#define IWM_PROBE_OPTION_MAX		20
+#define IWX_PROBE_OPTION_MAX		20
 
 /**
  * struct iwm_ssid_ie - directed scan network information element
@@ -5319,7 +5319,7 @@ struct iwm_ssid_ie {
 
 #define IWM_FULL_SCAN_MULTIPLIER 5
 #define IWM_FAST_SCHED_SCAN_ITERATIONS 3
-#define IWM_MAX_SCHED_SCAN_PLANS 2
+#define IWX_MAX_SCHED_SCAN_PLANS 2
 
 /**
  * iwm_scan_schedule_lmac - schedule of scan offload
@@ -5361,7 +5361,7 @@ enum iwm_scan_channel_flags_lmac {
  * @iter_count:		scan iteration on this channel
  * @iter_interval:	interval in seconds between iterations on one channel
  */
-struct iwm_scan_channel_cfg_lmac {
+struct iwx_scan_channel_cfg_lmac {
 	uint32_t flags;
 	uint16_t channel_num;
 	uint16_t iter_count;
@@ -5391,10 +5391,10 @@ struct iwx_scan_probe_req {
 	uint8_t buf[IWX_SCAN_OFFLOAD_PROBE_REQ_SIZE];
 } __packed;
 
-enum iwm_scan_channel_flags {
-	IWM_SCAN_CHANNEL_FLAG_EBS		= (1 << 0),
-	IWM_SCAN_CHANNEL_FLAG_EBS_ACCURATE	= (1 << 1),
-	IWM_SCAN_CHANNEL_FLAG_CACHE_ADD		= (1 << 2),
+enum iwx_scan_channel_flags {
+	IWX_SCAN_CHANNEL_FLAG_EBS		= (1 << 0),
+	IWX_SCAN_CHANNEL_FLAG_EBS_ACCURATE	= (1 << 1),
+	IWX_SCAN_CHANNEL_FLAG_CACHE_ADD		= (1 << 2),
 };
 
 /* iwm_scan_channel_opt - CHANNEL_OPTIMIZATION_API_S
@@ -5409,11 +5409,63 @@ struct iwm_scan_channel_opt {
 	uint16_t non_ebs_ratio;
 } __packed;
 
-enum iwm_scan_priority {
+enum iwx_scan_priority {
 	IWM_SCAN_PRIORITY_LOW,
 	IWM_SCAN_PRIORITY_MEDIUM,
-	IWM_SCAN_PRIORITY_HIGH,
+	IWX_SCAN_PRIORITY_HIGH,
 };
+
+/**
+ * iwm_scan_req_lmac - SCAN_REQUEST_CMD_API_S_VER_1
+ * @reserved1: for alignment and future use
+ * @channel_num: num of channels to scan
+ * @active-dwell: dwell time for active channels
+ * @passive-dwell: dwell time for passive channels
+ * @fragmented-dwell: dwell time for fragmented passive scan
+ * @extended_dwell: dwell time for channels 1, 6 and 11 (in certain cases)
+ * @reserved2: for alignment and future use
+ * @rx_chain_selct: PHY_RX_CHAIN_* flags
+ * @scan_flags: &enum iwm_lmac_scan_flags
+ * @max_out_time: max time (in TU) to be out of associated channel
+ * @suspend_time: pause scan this long (TUs) when returning to service channel
+ * @flags: RXON flags
+ * @filter_flags: RXON filter
+ * @tx_cmd: tx command for active scan; for 2GHz and for 5GHz
+ * @direct_scan: list of SSIDs for directed active scan
+ * @scan_prio: enum iwm_scan_priority
+ * @iter_num: number of scan iterations
+ * @delay: delay in seconds before first iteration
+ * @schedule: two scheduling plans. The first one is finite, the second one can
+ *	be infinite.
+ * @channel_opt: channel optimization options, for full and partial scan
+ * @data: channel configuration and probe request packet.
+ */
+struct iwx_scan_req_lmac {
+	/* SCAN_REQUEST_FIXED_PART_API_S_VER_7 */
+	uint32_t reserved1;
+	uint8_t n_channels;
+	uint8_t active_dwell;
+	uint8_t passive_dwell;
+	uint8_t fragmented_dwell;
+	uint8_t extended_dwell;
+	uint8_t reserved2;
+	uint16_t rx_chain_select;
+	uint32_t scan_flags;
+	uint32_t max_out_time;
+	uint32_t suspend_time;
+	/* RX_ON_FLAGS_API_S_VER_1 */
+	uint32_t flags;
+	uint32_t filter_flags;
+	struct iwm_scan_req_tx_cmd tx_cmd[2];
+	struct iwm_ssid_ie direct_scan[IWX_PROBE_OPTION_MAX];
+	uint32_t scan_prio;
+	/* SCAN_REQ_PERIODIC_PARAMS_API_S */
+	uint32_t iter_num;
+	uint32_t delay;
+	struct iwm_scan_schedule_lmac schedule[IWX_MAX_SCHED_SCAN_PLANS];
+	struct iwm_scan_channel_opt channel_opt[2];
+	uint8_t data[];
+} __packed;
 
 /**
  * iwm_scan_offload_complete - PERIODIC_SCAN_COMPLETE_NTF_API_S_VER_2
@@ -5520,16 +5572,16 @@ struct iwm_scan_offload_profile_cfg {
 	uint8_t reserved[2];
 } __packed;
 
-enum iwm_scan_offload_complete_status {
-	IWM_SCAN_OFFLOAD_COMPLETED	= 1,
-	IWM_SCAN_OFFLOAD_ABORTED	= 2,
+enum iwx_scan_offload_complete_status {
+	IWX_SCAN_OFFLOAD_COMPLETED	= 1,
+	IWX_SCAN_OFFLOAD_ABORTED	= 2,
 };
 
-enum iwm_scan_ebs_status {
-	IWM_SCAN_EBS_SUCCESS,
-	IWM_SCAN_EBS_FAILED,
-	IWM_SCAN_EBS_CHAN_NOT_FOUND,
-	IWM_SCAN_EBS_INACTIVE,
+enum iwx_scan_ebs_status {
+	IWX_SCAN_EBS_SUCCESS,
+	IWX_SCAN_EBS_FAILED,
+	IWX_SCAN_EBS_CHAN_NOT_FOUND,
+	IWX_SCAN_EBS_INACTIVE,
 };
 
 /**
@@ -5564,55 +5616,55 @@ struct iwx_lmac_scan_complete_notif {
 
 /* UMAC Scan API */
 
-enum iwm_scan_config_flags {
-	IWM_SCAN_CONFIG_FLAG_ACTIVATE			= (1 << 0),
+enum iwx_scan_config_flags {
+	IWX_SCAN_CONFIG_FLAG_ACTIVATE			= (1 << 0),
 	IWM_SCAN_CONFIG_FLAG_DEACTIVATE			= (1 << 1),
 	IWM_SCAN_CONFIG_FLAG_FORBID_CHUB_REQS		= (1 << 2),
-	IWM_SCAN_CONFIG_FLAG_ALLOW_CHUB_REQS		= (1 << 3),
-	IWM_SCAN_CONFIG_FLAG_SET_TX_CHAINS		= (1 << 8),
-	IWM_SCAN_CONFIG_FLAG_SET_RX_CHAINS		= (1 << 9),
-	IWM_SCAN_CONFIG_FLAG_SET_AUX_STA_ID		= (1 << 10),
-	IWM_SCAN_CONFIG_FLAG_SET_ALL_TIMES		= (1 << 11),
+	IWX_SCAN_CONFIG_FLAG_ALLOW_CHUB_REQS		= (1 << 3),
+	IWX_SCAN_CONFIG_FLAG_SET_TX_CHAINS		= (1 << 8),
+	IWX_SCAN_CONFIG_FLAG_SET_RX_CHAINS		= (1 << 9),
+	IWX_SCAN_CONFIG_FLAG_SET_AUX_STA_ID		= (1 << 10),
+	IWX_SCAN_CONFIG_FLAG_SET_ALL_TIMES		= (1 << 11),
 	IWM_SCAN_CONFIG_FLAG_SET_EFFECTIVE_TIMES	= (1 << 12),
-	IWM_SCAN_CONFIG_FLAG_SET_CHANNEL_FLAGS		= (1 << 13),
-	IWM_SCAN_CONFIG_FLAG_SET_LEGACY_RATES		= (1 << 14),
-	IWM_SCAN_CONFIG_FLAG_SET_MAC_ADDR		= (1 << 15),
+	IWX_SCAN_CONFIG_FLAG_SET_CHANNEL_FLAGS		= (1 << 13),
+	IWX_SCAN_CONFIG_FLAG_SET_LEGACY_RATES		= (1 << 14),
+	IWX_SCAN_CONFIG_FLAG_SET_MAC_ADDR		= (1 << 15),
 	IWM_SCAN_CONFIG_FLAG_SET_FRAGMENTED		= (1 << 16),
-	IWM_SCAN_CONFIG_FLAG_CLEAR_FRAGMENTED		= (1 << 17),
+	IWX_SCAN_CONFIG_FLAG_CLEAR_FRAGMENTED		= (1 << 17),
 	IWM_SCAN_CONFIG_FLAG_SET_CAM_MODE		= (1 << 18),
 	IWM_SCAN_CONFIG_FLAG_CLEAR_CAM_MODE		= (1 << 19),
 	IWM_SCAN_CONFIG_FLAG_SET_PROMISC_MODE		= (1 << 20),
 	IWM_SCAN_CONFIG_FLAG_CLEAR_PROMISC_MODE		= (1 << 21),
 
 	/* Bits 26-31 are for num of channels in channel_array */
-#define IWM_SCAN_CONFIG_N_CHANNELS(n) ((n) << 26)
+#define IWX_SCAN_CONFIG_N_CHANNELS(n) ((n) << 26)
 };
 
-enum iwm_scan_config_rates {
+enum iwx_scan_config_rates {
 	/* OFDM basic rates */
-	IWM_SCAN_CONFIG_RATE_6M		= (1 << 0),
-	IWM_SCAN_CONFIG_RATE_9M		= (1 << 1),
-	IWM_SCAN_CONFIG_RATE_12M	= (1 << 2),
-	IWM_SCAN_CONFIG_RATE_18M	= (1 << 3),
-	IWM_SCAN_CONFIG_RATE_24M	= (1 << 4),
-	IWM_SCAN_CONFIG_RATE_36M	= (1 << 5),
-	IWM_SCAN_CONFIG_RATE_48M	= (1 << 6),
-	IWM_SCAN_CONFIG_RATE_54M	= (1 << 7),
+	IWX_SCAN_CONFIG_RATE_6M		= (1 << 0),
+	IWX_SCAN_CONFIG_RATE_9M		= (1 << 1),
+	IWX_SCAN_CONFIG_RATE_12M	= (1 << 2),
+	IWX_SCAN_CONFIG_RATE_18M	= (1 << 3),
+	IWX_SCAN_CONFIG_RATE_24M	= (1 << 4),
+	IWX_SCAN_CONFIG_RATE_36M	= (1 << 5),
+	IWX_SCAN_CONFIG_RATE_48M	= (1 << 6),
+	IWX_SCAN_CONFIG_RATE_54M	= (1 << 7),
 	/* CCK basic rates */
-	IWM_SCAN_CONFIG_RATE_1M		= (1 << 8),
-	IWM_SCAN_CONFIG_RATE_2M		= (1 << 9),
-	IWM_SCAN_CONFIG_RATE_5M		= (1 << 10),
-	IWM_SCAN_CONFIG_RATE_11M	= (1 << 11),
+	IWX_SCAN_CONFIG_RATE_1M		= (1 << 8),
+	IWX_SCAN_CONFIG_RATE_2M		= (1 << 9),
+	IWX_SCAN_CONFIG_RATE_5M		= (1 << 10),
+	IWX_SCAN_CONFIG_RATE_11M	= (1 << 11),
 
 	/* Bits 16-27 are for supported rates */
-#define IWM_SCAN_CONFIG_SUPPORTED_RATE(rate)	((rate) << 16)
+#define IWX_SCAN_CONFIG_SUPPORTED_RATE(rate)	((rate) << 16)
 };
 
-enum iwm_channel_flags {
-	IWM_CHANNEL_FLAG_EBS				= (1 << 0),
-	IWM_CHANNEL_FLAG_ACCURATE_EBS			= (1 << 1),
-	IWM_CHANNEL_FLAG_EBS_ADD			= (1 << 2),
-	IWM_CHANNEL_FLAG_PRE_SCAN_PASSIVE2ACTIVE	= (1 << 3),
+enum iwx_channel_flags {
+	IWX_CHANNEL_FLAG_EBS				= (1 << 0),
+	IWX_CHANNEL_FLAG_ACCURATE_EBS			= (1 << 1),
+	IWX_CHANNEL_FLAG_EBS_ADD			= (1 << 2),
+	IWX_CHANNEL_FLAG_PRE_SCAN_PASSIVE2ACTIVE	= (1 << 3),
 };
 
 /**
@@ -5658,6 +5710,10 @@ struct iwx_scan_config {
 	uint32_t legacy_rates;
 	uint32_t out_of_channel_time[IWX_SCAN_TWO_LMACS];
 	uint32_t suspend_time[IWX_SCAN_TWO_LMACS];
+	uint8_t dwell_active;
+	uint8_t dwell_passive;
+	uint8_t dwell_fragmented;
+	uint8_t dwell_extended;
 	struct iwx_scan_dwell dwell;
 	uint8_t mac_addr[IEEE80211_ADDR_LEN];
 	uint8_t bcast_sta_id;
@@ -5684,18 +5740,18 @@ enum iwm_umac_scan_uid_offsets {
 	IWM_UMAC_SCAN_UID_SEQ_OFFSET		= 8,
 };
 
-enum iwm_umac_scan_general_flags {
+enum iwx_umac_scan_general_flags {
 	IWM_UMAC_SCAN_GEN_FLAGS_PERIODIC	= (1 << 0),
 	IWM_UMAC_SCAN_GEN_FLAGS_OVER_BT		= (1 << 1),
-	IWM_UMAC_SCAN_GEN_FLAGS_PASS_ALL	= (1 << 2),
-	IWM_UMAC_SCAN_GEN_FLAGS_PASSIVE		= (1 << 3),
+	IWX_UMAC_SCAN_GEN_FLAGS_PASS_ALL	= (1 << 2),
+	IWX_UMAC_SCAN_GEN_FLAGS_PASSIVE		= (1 << 3),
 	IWM_UMAC_SCAN_GEN_FLAGS_PRE_CONNECT	= (1 << 4),
-	IWM_UMAC_SCAN_GEN_FLAGS_ITER_COMPLETE	= (1 << 5),
+	IWX_UMAC_SCAN_GEN_FLAGS_ITER_COMPLETE	= (1 << 5),
 	IWM_UMAC_SCAN_GEN_FLAGS_MULTIPLE_SSID	= (1 << 6),
 	IWM_UMAC_SCAN_GEN_FLAGS_FRAGMENTED	= (1 << 7),
-	IWM_UMAC_SCAN_GEN_FLAGS_RRM_ENABLED	= (1 << 8),
+	IWX_UMAC_SCAN_GEN_FLAGS_RRM_ENABLED	= (1 << 8),
 	IWM_UMAC_SCAN_GEN_FLAGS_MATCH		= (1 << 9),
-	IWM_UMAC_SCAN_GEN_FLAGS_EXTENDED_DWELL	= (1 << 10),
+	IWX_UMAC_SCAN_GEN_FLAGS_EXTENDED_DWELL	= (1 << 10),
 /* todo if_iwx: openbsd has bits for 10,11,13-15 */
 };
 
@@ -5716,9 +5772,9 @@ enum iwm_umac_scan_general_flags {
  * @iter_count:		repetition count for the channel.
  * @iter_interval:	interval between two scan iterations on one channel.
  */
-struct iwm_scan_channel_cfg_umac {
+struct iwx_scan_channel_cfg_umac {
 	uint32_t flags;
-#define IWM_SCAN_CHANNEL_UMAC_NSSIDS(x)		((1 << (x)) - 1)
+#define IWX_SCAN_CHANNEL_UMAC_NSSIDS(x)		((1 << (x)) - 1)
 
 	uint8_t channel_num;
 	uint8_t iter_count;
@@ -5748,12 +5804,12 @@ struct iwm_scan_umac_schedule {
  */
 struct iwx_scan_req_umac_tail {
 	/* SCAN_PERIODIC_PARAMS_API_S_VER_1 */
-	struct iwm_scan_umac_schedule schedule[IWM_MAX_SCHED_SCAN_PLANS];
+	struct iwm_scan_umac_schedule schedule[IWX_MAX_SCHED_SCAN_PLANS];
 	uint16_t delay;
 	uint16_t reserved;
 	/* SCAN_PROBE_PARAMS_API_S_VER_1 */
 	struct iwx_scan_probe_req preq;
-	struct iwm_ssid_ie direct_scan[IWM_PROBE_OPTION_MAX];
+	struct iwm_ssid_ie direct_scan[IWX_PROBE_OPTION_MAX];
 } __packed;
 
 /**
@@ -5901,7 +5957,7 @@ struct iwx_umac_scan_abort {
  * @time_from_last_iter: time elapsed from last iteration
  * @reserved: for future use
  */
-struct iwm_umac_scan_complete {
+struct iwx_umac_scan_complete {
 	uint32_t uid;
 	uint8_t last_schedule;
 	uint8_t last_iter;

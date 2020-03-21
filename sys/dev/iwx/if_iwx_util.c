@@ -342,7 +342,6 @@ iwx_send_cmd(struct iwx_softc *sc, struct iwx_host_cmd *hcmd)
 }
 
 /* iwlwifi: mvm/utils.c */
-#if 0
 int
 iwx_send_cmd_pdu(struct iwx_softc *sc, uint32_t id,
 	uint32_t flags, uint16_t len, const void *data)
@@ -411,7 +410,6 @@ iwx_send_cmd_pdu_status(struct iwx_softc *sc, uint32_t id,
 
 	return iwx_send_cmd_status(sc, &cmd, status);
 }
-#endif
 
 void
 iwx_free_resp(struct iwx_softc *sc, struct iwx_host_cmd *hcmd)

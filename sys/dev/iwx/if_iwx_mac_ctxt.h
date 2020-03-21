@@ -112,6 +112,8 @@ extern const uint8_t iwx_ac_to_tx_fifo[];
 
 extern	int iwx_mac_ctxt_add(struct iwx_softc *sc, struct ieee80211vap *vap);
 extern	int iwx_mac_ctxt_changed(struct iwx_softc *sc, struct ieee80211vap *vap);
+#ifdef not_in_iwx
 extern	int iwm_mac_ctxt_remove(struct iwx_softc *sc, struct ieee80211vap *vap);
+#endif
 
 #endif	/* __IF_IWM_MAC_CTXT_H__ */

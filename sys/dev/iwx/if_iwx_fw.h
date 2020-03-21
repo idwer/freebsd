@@ -103,8 +103,10 @@ struct iwx_nvm_access_complete_cmd {
 #define IWX_PAGING_CMD_NUM_OF_PAGES_IN_LAST_GRP_POS 0
 #define IWM_PAGING_TLV_SECURE_MASK 1
 
+#ifdef not_in_iwx
 extern	void iwx_free_fw_paging(struct iwx_softc *);
 extern	int iwx_save_fw_paging(struct iwx_softc *, const struct iwx_fw_img *);
 extern	int iwx_send_paging_cmd(struct iwx_softc *, const struct iwx_fw_img *);
+#endif
 
 #endif	/* __IF_IWM_FW_H__ */

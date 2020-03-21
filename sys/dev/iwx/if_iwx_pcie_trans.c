@@ -194,6 +194,7 @@ iwx_write_prph64(struct iwx_softc *sc, uint64_t addr, uint64_t val)
 	iwx_write_prph(sc, (uint32_t)addr + 4, val >> 32);
 }
 
+#ifdef not_in_iwx
 int
 iwx_poll_prph(struct iwx_softc *sc, uint32_t addr, uint32_t bits, uint32_t mask,
     int timeout)
@@ -207,6 +208,7 @@ iwx_poll_prph(struct iwx_softc *sc, uint32_t addr, uint32_t bits, uint32_t mask,
 
 	return (ETIMEDOUT);
 }
+#endif
 
 #ifdef IWX_DEBUG
 /* iwlwifi: pcie/trans.c */

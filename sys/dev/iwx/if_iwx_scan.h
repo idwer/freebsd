@@ -116,5 +116,7 @@ extern	void iwx_rx_lmac_scan_complete_notif(struct iwx_softc *,
 						 struct iwx_rx_packet *);
 extern	void iwx_rx_umac_scan_complete_notif(struct iwx_softc *,
 						 struct iwx_rx_packet *);
+extern	int iwx_enable_data_tx_queues(struct iwx_softc *);
+ 
 
 #endif	/* __IF_IWN_SCAN_H__ */

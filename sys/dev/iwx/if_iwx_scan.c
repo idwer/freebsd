@@ -176,37 +176,39 @@ iwm_scan_rxon_flags(struct ieee80211_channel *c)
 	else
 		return htole32(IWM_PHY_BAND_5);
 }
+#endif
 
 static inline boolean_t
-iwm_rrm_scan_needed(struct iwm_softc *sc)
+iwx_rrm_scan_needed(struct iwx_softc *sc)
 {
 	/* require rrm scan whenever the fw supports it */
-	return iwm_fw_has_capa(sc, IWM_UCODE_TLV_CAPA_DS_PARAM_SET_IE_SUPPORT);
+	return iwx_fw_has_capa(sc, IWX_UCODE_TLV_CAPA_DS_PARAM_SET_IE_SUPPORT);
 }
 
-#ifdef IWM_DEBUG
+#ifdef IWX_DEBUG
 static const char *
-iwm_ebs_status_str(enum iwm_scan_ebs_status status)
+iwx_ebs_status_str(enum iwx_scan_ebs_status status)
 {
 	switch (status) {
-	case IWM_SCAN_EBS_SUCCESS:
+	case IWX_SCAN_EBS_SUCCESS:
 		return "successful";
-	case IWM_SCAN_EBS_INACTIVE:
+	case IWX_SCAN_EBS_INACTIVE:
 		return "inactive";
-	case IWM_SCAN_EBS_FAILED:
-	case IWM_SCAN_EBS_CHAN_NOT_FOUND:
+	case IWX_SCAN_EBS_FAILED:
+	case IWX_SCAN_EBS_CHAN_NOT_FOUND:
 	default:
 		return "failed";
 	}
 }
 
 static const char *
-iwm_offload_status_str(enum iwm_scan_offload_complete_status status)
+iwx_offload_status_str(enum iwx_scan_offload_complete_status status)
 {
-	return (status == IWM_SCAN_OFFLOAD_ABORTED) ? "aborted" : "completed";
+	return (status == IWX_SCAN_OFFLOAD_ABORTED) ? "aborted" : "completed";
 }
 #endif
 
+#if 0
 void
 iwm_rx_lmac_scan_complete_notif(struct iwm_softc *sc,
     struct iwm_rx_packet *pkt)
@@ -232,26 +234,27 @@ iwm_rx_lmac_scan_complete_notif(struct iwm_softc *sc,
 			scan_notif->ebs_status == IWM_SCAN_EBS_INACTIVE;
 
 }
+#endif
 
 void
-iwm_rx_umac_scan_complete_notif(struct iwm_softc *sc,
-    struct iwm_rx_packet *pkt)
+iwx_rx_umac_scan_complete_notif(struct iwx_softc *sc,
+    struct iwx_rx_packet *pkt)
 {
-	struct iwm_umac_scan_complete *notif = (void *)pkt->data;
+	struct iwx_umac_scan_complete *notif = (void *)pkt->data;
 
-	IWM_DPRINTF(sc, IWM_DEBUG_SCAN,
+	IWX_DPRINTF(sc, IWX_DEBUG_SCAN,
 	    "Scan completed, uid %u, status %s, EBS status %s\n",
 	    le32toh(notif->uid),
-	    iwm_offload_status_str(notif->status),
-	    iwm_ebs_status_str(notif->ebs_status));
+	    iwx_offload_status_str(notif->status),
+	    iwx_ebs_status_str(notif->ebs_status));
 
-	if (notif->ebs_status != IWM_SCAN_EBS_SUCCESS &&
-	    notif->ebs_status != IWM_SCAN_EBS_INACTIVE)
+	if (notif->ebs_status != IWX_SCAN_EBS_SUCCESS &&
+	    notif->ebs_status != IWX_SCAN_EBS_INACTIVE)
 		sc->last_ebs_successful = FALSE;
 }
 
 static int
-iwm_scan_skip_channel(struct ieee80211_channel *c)
+iwx_scan_skip_channel(struct ieee80211_channel *c)
 {
 	if (IEEE80211_IS_CHAN_2GHZ(c) && IEEE80211_IS_CHAN_B(c))
 		return 0;
@@ -262,8 +265,8 @@ iwm_scan_skip_channel(struct ieee80211_channel *c)
 }
 
 static uint8_t
-iwm_umac_scan_fill_channels(struct iwm_softc *sc,
-    struct iwm_scan_channel_cfg_umac *chan, int n_ssids)
+iwx_umac_scan_fill_channels(struct iwx_softc *sc,
+    struct iwx_scan_channel_cfg_umac *chan, int n_ssids)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ieee80211_scan_state *ss = ic->ic_scan;
@@ -280,19 +283,19 @@ iwm_umac_scan_fill_channels(struct iwm_softc *sc,
 		 * something in the chanlist.
 		 */
 		if (!IEEE80211_IS_CHAN_2GHZ(c) && !IEEE80211_IS_CHAN_5GHZ(c)) {
-			IWM_DPRINTF(sc, IWM_DEBUG_RESET | IWM_DEBUG_EEPROM,
+			IWX_DPRINTF(sc, IWX_DEBUG_RESET | IWX_DEBUG_EEPROM,
 			    "%s: skipping channel (freq=%d, ieee=%d, flags=0x%08x)\n",
 			    __func__, c->ic_freq, c->ic_ieee, c->ic_flags);
 			continue;
 		}
 
-		IWM_DPRINTF(sc, IWM_DEBUG_RESET | IWM_DEBUG_EEPROM,
+		IWX_DPRINTF(sc, IWX_DEBUG_RESET | IWX_DEBUG_EEPROM,
 		    "Adding channel %d (%d Mhz) to the list\n",
 		    nchan, c->ic_freq);
 		chan->channel_num = ieee80211_mhz2ieee(c->ic_freq, 0);
 		chan->iter_count = 1;
 		chan->iter_interval = htole16(0);
-		chan->flags = htole32(IWM_SCAN_CHANNEL_UMAC_NSSIDS(n_ssids));
+		chan->flags = htole32(IWX_SCAN_CHANNEL_UMAC_NSSIDS(n_ssids));
 		chan++;
 		nchan++;
 	}
@@ -301,7 +304,7 @@ iwm_umac_scan_fill_channels(struct iwm_softc *sc,
 }
 
 static int
-iwm_fill_probe_req(struct iwm_softc *sc, struct iwm_scan_probe_req *preq)
+iwx_fill_probe_req(struct iwx_softc *sc, struct iwx_scan_probe_req *preq)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
 	struct ieee80211vap *vap = TAILQ_FIRST(&ic->ic_vaps);
@@ -353,7 +356,7 @@ iwm_fill_probe_req(struct iwm_softc *sc, struct iwm_scan_probe_req *preq)
 	preq->band_data[0].len = htole16(frm - pos);
 	remain -= frm - pos;
 
-	if (iwm_rrm_scan_needed(sc)) {
+	if (iwx_rrm_scan_needed(sc)) {
 		if (remain < 3)
 			return ENOBUFS;
 		*frm++ = IEEE80211_ELEMID_DSPARMS;
@@ -490,9 +493,9 @@ iwx_config_umac_scan(struct iwx_softc *sc)
 }
 
 static boolean_t
-iwm_scan_use_ebs(struct iwm_softc *sc)
+iwx_scan_use_ebs(struct iwx_softc *sc)
 {
-	const struct iwm_ucode_capabilities *capa = &sc->sc_fw.ucode_capa;
+	const struct iwx_ucode_capabilities *capa = &sc->sc_fw.ucode_capa;
 
 	/* We can only use EBS if:
 	 *	1. the feature is supported;
@@ -500,52 +503,52 @@ iwm_scan_use_ebs(struct iwm_softc *sc)
 	 *	3. if only single scan, the single scan EBS API is supported;
 	 *	4. it's not a p2p find operation.
 	 */
-	return ((capa->flags & IWM_UCODE_TLV_FLAGS_EBS_SUPPORT) &&
+	return ((capa->flags & IWX_UCODE_TLV_FLAGS_EBS_SUPPORT) &&
 		sc->last_ebs_successful);
 }
 
 static int
-iwm_scan_size(struct iwm_softc *sc)
+iwx_scan_size(struct iwx_softc *sc)
 {
 	int base_size;
 
-	if (iwm_fw_has_capa(sc, IWM_UCODE_TLV_CAPA_UMAC_SCAN)) {
-		if (iwm_fw_has_api(sc, IWM_UCODE_TLV_API_ADAPTIVE_DWELL))
-			base_size = IWM_SCAN_REQ_UMAC_SIZE_V7;
+	if (iwx_fw_has_capa(sc, IWX_UCODE_TLV_CAPA_UMAC_SCAN)) {
+		if (iwx_fw_has_api(sc, IWX_UCODE_TLV_API_ADAPTIVE_DWELL))
+			base_size = IWX_SCAN_REQ_UMAC_SIZE_V7;
 		else
-			base_size = IWM_SCAN_REQ_UMAC_SIZE_V1;
+			base_size = IWX_SCAN_REQ_UMAC_SIZE_V1;
 
 		return base_size +
-		    sizeof(struct iwm_scan_channel_cfg_umac) *
+		    sizeof(struct iwx_scan_channel_cfg_umac) *
 		    sc->sc_fw.ucode_capa.n_scan_channels +
-		    sizeof(struct iwm_scan_req_umac_tail);
+		    sizeof(struct iwx_scan_req_umac_tail);
 	} else {
-		return sizeof(struct iwm_scan_req_lmac) +
-		    sizeof(struct iwm_scan_channel_cfg_lmac) *
+		return sizeof(struct iwx_scan_req_lmac) +
+		    sizeof(struct iwx_scan_channel_cfg_lmac) *
 		    sc->sc_fw.ucode_capa.n_scan_channels +
-		    sizeof(struct iwm_scan_probe_req);
+		    sizeof(struct iwx_scan_probe_req);
 	}
 }
 
 int
-iwx_umac_scan(struct iwm_softc *sc)
+iwx_umac_scan(struct iwx_softc *sc)
 {
-	struct iwm_host_cmd hcmd = {
-		.id = iwm_cmd_id(IWM_SCAN_REQ_UMAC, IWM_ALWAYS_LONG_GROUP, 0),
+	struct iwx_host_cmd hcmd = {
+		.id = iwx_cmd_id(IWX_SCAN_REQ_UMAC, IWX_ALWAYS_LONG_GROUP, 0),
 		.len = { 0, },
 		.data = { NULL, },
-		.flags = IWM_CMD_SYNC,
+		.flags = IWX_CMD_SYNC,
 	};
 	struct ieee80211_scan_state *ss = sc->sc_ic.ic_scan;
-	struct iwm_scan_req_umac *req;
-	struct iwm_scan_req_umac_tail *tail;
+	struct iwx_scan_req_umac *req;
+	struct iwx_scan_req_umac_tail *tail;
 	size_t req_len;
 	uint16_t general_flags;
 	uint8_t channel_flags, i, nssid;
 	int ret;
 
-	req_len = iwm_scan_size(sc);
-	if (req_len > IWM_MAX_CMD_PAYLOAD_SIZE)
+	req_len = iwx_scan_size(sc);
+	if (req_len > IWX_MAX_CMD_PAYLOAD_SIZE)
 		return ENOMEM;
 	req = malloc(req_len, M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (req == NULL)
@@ -554,63 +557,63 @@ iwx_umac_scan(struct iwm_softc *sc)
 	hcmd.len[0] = (uint16_t)req_len;
 	hcmd.data[0] = (void *)req;
 
-	IWM_DPRINTF(sc, IWM_DEBUG_SCAN, "Handling ieee80211 scan request\n");
+	IWX_DPRINTF(sc, IWX_DEBUG_SCAN, "Handling ieee80211 scan request\n");
 
-	nssid = MIN(ss->ss_nssid, IWM_PROBE_OPTION_MAX);
+	nssid = MIN(ss->ss_nssid, IWX_PROBE_OPTION_MAX);
 
-	general_flags = IWM_UMAC_SCAN_GEN_FLAGS_PASS_ALL |
-	    IWM_UMAC_SCAN_GEN_FLAGS_ITER_COMPLETE;
+	general_flags = IWX_UMAC_SCAN_GEN_FLAGS_PASS_ALL |
+	    IWX_UMAC_SCAN_GEN_FLAGS_ITER_COMPLETE;
 	/* guesswork, see openbsd sys/dev/pci/if_iwx.c:5002 */
-	if (iwm_fw_has_api(sc, IWM_UCODE_TLV_API_ADAPTIVE_DWELL_V2))
+	if (iwx_fw_has_api(sc, IWX_UCODE_TLV_API_ADAPTIVE_DWELL_V2))
 		general_flags |= IWX_UMAC_SCAN_GEN_FLAGS2_ALLOW_CHNL_REORDER;
-	if (!iwm_fw_has_api(sc, IWM_UCODE_TLV_API_ADAPTIVE_DWELL))
-		general_flags |= IWM_UMAC_SCAN_GEN_FLAGS_EXTENDED_DWELL;
-	if (iwm_rrm_scan_needed(sc))
-		general_flags |= IWM_UMAC_SCAN_GEN_FLAGS_RRM_ENABLED;
+	if (!iwx_fw_has_api(sc, IWX_UCODE_TLV_API_ADAPTIVE_DWELL))
+		general_flags |= IWX_UMAC_SCAN_GEN_FLAGS_EXTENDED_DWELL;
+	if (iwx_rrm_scan_needed(sc))
+		general_flags |= IWX_UMAC_SCAN_GEN_FLAGS_RRM_ENABLED;
 #if 0 // guesswork
 	if (nssid != 0)
 		general_flags |= IWM_UMAC_SCAN_GEN_FLAGS_PRE_CONNECT;
 	else
 #endif
-	general_flags |= IWM_UMAC_SCAN_GEN_FLAGS_PASSIVE;
+	general_flags |= IWX_UMAC_SCAN_GEN_FLAGS_PASSIVE;
 
 	channel_flags = 0;
-	if (iwm_scan_use_ebs(sc))
-		channel_flags = IWM_SCAN_CHANNEL_FLAG_EBS |
-		    IWM_SCAN_CHANNEL_FLAG_EBS_ACCURATE |
-		    IWM_SCAN_CHANNEL_FLAG_CACHE_ADD;
+	if (iwx_scan_use_ebs(sc))
+		channel_flags = IWX_SCAN_CHANNEL_FLAG_EBS |
+		    IWX_SCAN_CHANNEL_FLAG_EBS_ACCURATE |
+		    IWX_SCAN_CHANNEL_FLAG_CACHE_ADD;
 
 	req->general_flags = htole16(general_flags);
-	req->ooc_priority = htole32(IWM_SCAN_PRIORITY_HIGH);
+	req->ooc_priority = htole32(IWX_SCAN_PRIORITY_HIGH);
 
 	/* These timings correspond to iwlwifi's UNASSOC scan. */
-	if (iwm_fw_has_api(sc, IWM_UCODE_TLV_API_ADAPTIVE_DWELL)) {
+	if (iwx_fw_has_api(sc, IWX_UCODE_TLV_API_ADAPTIVE_DWELL)) {
 		req->v7.active_dwell = 10;
 		req->v7.passive_dwell = 110;
 		req->v7.fragmented_dwell = 44;
 		req->v7.adwell_default_n_aps_social = 10;
 		req->v7.adwell_default_n_aps = 2;
 		req->v7.adwell_max_budget = htole16(300);
-		req->v7.scan_priority = htole32(IWM_SCAN_PRIORITY_HIGH);
+		req->v7.scan_priority = htole32(IWX_SCAN_PRIORITY_HIGH);
 		req->v7.channel.flags = channel_flags;
-		req->v7.channel.count = iwm_umac_scan_fill_channels(sc,
-		    (struct iwm_scan_channel_cfg_umac *)req->v7.data, nssid);
+		req->v7.channel.count = iwx_umac_scan_fill_channels(sc,
+		    (struct iwx_scan_channel_cfg_umac *)req->v7.data, nssid);
 
 		tail = (void *)((char *)&req->v7.data +
-		    sizeof(struct iwm_scan_channel_cfg_umac) *
+		    sizeof(struct iwx_scan_channel_cfg_umac) *
 		    sc->sc_fw.ucode_capa.n_scan_channels);
 	} else {
 		req->v1.active_dwell = 10;
 		req->v1.passive_dwell = 110;
 		req->v1.fragmented_dwell = 44;
 		req->v1.extended_dwell = 90;
-		req->v1.scan_priority = htole32(IWM_SCAN_PRIORITY_HIGH);
+		req->v1.scan_priority = htole32(IWX_SCAN_PRIORITY_HIGH);
 		req->v1.channel.flags = channel_flags;
-		req->v1.channel.count = iwm_umac_scan_fill_channels(sc,
-		    (struct iwm_scan_channel_cfg_umac *)req->v1.data, nssid);
+		req->v1.channel.count = iwx_umac_scan_fill_channels(sc,
+		    (struct iwx_scan_channel_cfg_umac *)req->v1.data, nssid);
 
 		tail = (void *)((char *)&req->v1.data +
-		    sizeof(struct iwm_scan_channel_cfg_umac) *
+		    sizeof(struct iwx_scan_channel_cfg_umac) *
 		    sc->sc_fw.ucode_capa.n_scan_channels);
 	}
 
@@ -624,7 +627,7 @@ iwx_umac_scan(struct iwm_softc *sc)
 		/* XXX debug */
 	}
 
-	ret = iwm_fill_probe_req(sc, &tail->preq);
+	ret = iwx_fill_probe_req(sc, &tail->preq);
 	if (ret) {
 		free(req, M_DEVBUF);
 		return ret;
@@ -634,14 +637,13 @@ iwx_umac_scan(struct iwm_softc *sc)
 	tail->schedule[0].interval = 0;
 	tail->schedule[0].iter_count = 1;
 
-	ret = iwm_send_cmd(sc, &hcmd);
+	ret = iwx_send_cmd(sc, &hcmd);
 	if (!ret)
-		IWM_DPRINTF(sc, IWM_DEBUG_SCAN,
+		IWX_DPRINTF(sc, IWX_DEBUG_SCAN,
 		    "Scan request was sent successfully\n");
 	free(req, M_DEVBUF);
 	return ret;
 }
-#endif
 
 //#ifdef not_in_iwx
 static int
@@ -708,13 +710,14 @@ iwx_scan_abort(struct iwx_softc *sc)
 	return err;
 }
 
-#ifdef not_in_iwx
 int
 iwx_enable_data_tx_queues(struct iwx_softc *sc)
 {
 	int err, ac;
 
-	for (ac = 0; ac < EDCA_NUM_AC; ac++) {
+	/* openbsd: sys/net80211/ieee80211.h #define EDCA_NUM_AC 4 */
+//	for (ac = 0; ac < EDCA_NUM_AC; ac++) {
+	for (ac = 0; ac < 4; ac++) {
 		int qid = ac + IWX_DQA_AUX_QUEUE + 1;
 		/*
 		 * Regular data frames use the "MGMT" TID and queue.
@@ -730,7 +733,6 @@ iwx_enable_data_tx_queues(struct iwx_softc *sc)
 
 	return 0;
 }
-#endif
 
 int
 iwx_scan_stop_wait(struct iwx_softc *sc)
