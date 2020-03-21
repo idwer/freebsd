@@ -4452,15 +4452,19 @@ iwx_tx(struct iwx_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 	desc->tbs[0].tb_len = htole16(IWX_FIRST_TB_SIZE);
 	paddr = htole64(data->cmd_paddr);
 	memcpy(&desc->tbs[0].addr, &paddr, sizeof(paddr));
+#ifdef tbd
 	if (data->cmd_paddr >> 32 != (data->cmd_paddr + le32toh(desc->tbs[0].tb_len)) >> 32)
 		IWX_DPRINTF(sc, IWX_DEBUG_XMIT, "%s: TB0 crosses 32bit boundary\n", __func__);
+#endif
 	desc->tbs[1].tb_len = htole16(sizeof(struct iwx_cmd_header) +
 	    sizeof(*tx) + hdrlen + pad - IWX_FIRST_TB_SIZE);
 	paddr = htole64(data->cmd_paddr + IWX_FIRST_TB_SIZE);
 	memcpy(&desc->tbs[1].addr, &paddr, sizeof(paddr));
 
+#ifdef tbd
 	if (data->cmd_paddr >> 32 != (data->cmd_paddr + le32toh(desc->tbs[1].tb_len)) >> 32)
 		IWX_DPRINTF(sc, IWX_DEBUG_XMIT, "%s: TB1 crosses 32bit boundary\n", __func__);
+#endif
 
 	/* Other DMA segments are for data payload. */
 	for (i = 0; i < nsegs; i++) {
@@ -4468,8 +4472,10 @@ iwx_tx(struct iwx_softc *sc, struct mbuf *m, struct ieee80211_node *ni, int ac)
 		desc->tbs[i + 2].tb_len = htole16(seg->ds_len);
 		paddr = htole64(seg->ds_addr);
 		memcpy(&desc->tbs[i + 2].addr, &paddr, sizeof(paddr));
+#ifdef tbd
 		if (data->cmd_paddr >> 32 != (data->cmd_paddr + le32toh(desc->tbs[i + 2].tb_len)) >> 32)
 			IWX_DPRINTF(sc, IWX_DEBUG_XMIT, "%s: TB%d crosses 32bit boundary\n", __func__, i + 2);
+#endif
 	}
 
 	bus_dmamap_sync(ring->data_dmat, data->map,
