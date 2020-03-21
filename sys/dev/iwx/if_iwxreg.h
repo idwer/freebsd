@@ -6626,6 +6626,27 @@ iwx_rx_packet_payload_len(const struct iwx_rx_packet *pkt)
 #define IWX_MIN_DBM	-100
 #define IWX_MAX_DBM	-33	/* realistic guess */
 
+/* borrowed from sys/dev/ntb/ntb_hw/ntb_hw_amd.c */
+#ifdef __i386__
+static __inline uint64_t
+bus_space_read_8(bus_space_tag_t tag, bus_space_handle_t handle,
+    bus_size_t offset)
+{
+
+	return (bus_space_read_4(tag, handle, offset) |
+	    ((uint64_t)bus_space_read_4(tag, handle, offset + 4)) << 32);
+}
+
+static __inline void
+bus_space_write_8(bus_space_tag_t tag, bus_space_handle_t handle,
+    bus_size_t offset, uint64_t val)
+{
+
+	bus_space_write_4(tag, handle, offset, val);
+	bus_space_write_4(tag, handle, offset + 4, val >> 32);
+}
+#endif
+
 #define IWX_READ_8(sc, reg)						\
 	bus_space_read_8((sc)->sc_st, (sc)->sc_sh, (reg))
 
