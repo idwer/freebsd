@@ -122,8 +122,10 @@ extern	void iwx_notification_wait_free(struct iwx_notif_wait_data *notif_data);
 extern	void iwx_notification_wait_notify(
 		struct iwx_notif_wait_data *notif_data, uint16_t cmd,
 		struct iwx_rx_packet *pkt);
+#ifdef not_in_iwx
 extern	void iwx_abort_notification_waits(
 		struct iwx_notif_wait_data *notif_data);
+#endif
 
 /* user functions */
 extern	void iwx_init_notification_wait(struct iwx_notif_wait_data *notif_data,

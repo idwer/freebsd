@@ -172,7 +172,6 @@ iwx_te_clear_data(struct iwx_softc *sc)
 	sc->sc_flags &= ~IWX_FLAG_TE_ACTIVE;
 }
 
-#if 0
 /*
  * Handles a FW notification for an event that is known to the driver.
  *
@@ -181,10 +180,10 @@ iwx_te_clear_data(struct iwx_softc *sc)
  * @notif: the notification data corresponding the time event data.
  */
 static void
-iwm_te_handle_notif(struct iwm_softc *sc,
-    struct iwm_time_event_notif *notif)
+iwx_te_handle_notif(struct iwx_softc *sc,
+    struct iwx_time_event_notif *notif)
 {
-	IWM_DPRINTF(sc, IWM_DEBUG_TE,
+	IWX_DPRINTF(sc, IWX_DEBUG_TE,
 	    "Handle time event notif - UID = 0x%x action %d\n",
 	    le32toh(notif->unique_id),
 	    le32toh(notif->action));
@@ -192,21 +191,21 @@ iwm_te_handle_notif(struct iwm_softc *sc,
 	if (!le32toh(notif->status)) {
 		const char *msg;
 
-		if (notif->action & htole32(IWM_TE_V2_NOTIF_HOST_EVENT_START))
+		if (notif->action & htole32(IWX_TE_V2_NOTIF_HOST_EVENT_START))
 			msg = "Time Event start notification failure";
 		else
 			msg = "Time Event end notification failure";
 
-		IWM_DPRINTF(sc, IWM_DEBUG_TE, "%s\n", msg);
+		IWX_DPRINTF(sc, IWX_DEBUG_TE, "%s\n", msg);
 	}
 
-	if (le32toh(notif->action) & IWM_TE_V2_NOTIF_HOST_EVENT_END) {
-		IWM_DPRINTF(sc, IWM_DEBUG_TE,
+	if (le32toh(notif->action) & IWX_TE_V2_NOTIF_HOST_EVENT_END) {
+		IWX_DPRINTF(sc, IWX_DEBUG_TE,
 		    "TE ended - current time %d, estimated end %d\n",
 		    ticks, sc->sc_time_event_end_ticks);
 
-		iwm_te_clear_data(sc);
-	} else if (le32toh(notif->action) & IWM_TE_V2_NOTIF_HOST_EVENT_START) {
+		iwx_te_clear_data(sc);
+	} else if (le32toh(notif->action) & IWX_TE_V2_NOTIF_HOST_EVENT_START) {
 		sc->sc_time_event_end_ticks =
 		    ticks + TU_TO_HZ(sc->sc_time_event_duration);
 	} else {
@@ -218,18 +217,17 @@ iwm_te_handle_notif(struct iwm_softc *sc,
  * The Rx handler for time event notifications
  */
 void
-iwm_rx_time_event_notif(struct iwm_softc *sc, struct iwm_rx_packet *pkt)
+iwx_rx_time_event_notif(struct iwx_softc *sc, struct iwx_rx_packet *pkt)
 {
-	struct iwm_time_event_notif *notif = (void *)pkt->data;
+	struct iwx_time_event_notif *notif = (void *)pkt->data;
 
-	IWM_DPRINTF(sc, IWM_DEBUG_TE,
+	IWX_DPRINTF(sc, IWX_DEBUG_TE,
 	    "Time event notification - UID = 0x%x action %d\n",
 	    le32toh(notif->unique_id),
 	    le32toh(notif->action));
 
-	iwm_te_handle_notif(sc, notif);
+	iwx_te_handle_notif(sc, notif);
 }
-#endif
 
 static int
 iwx_te_notif(struct iwx_softc *sc, struct iwx_rx_packet *pkt,

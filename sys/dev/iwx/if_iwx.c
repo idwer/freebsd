@@ -586,7 +586,7 @@ void	iwx_tx_update_byte_tbl(struct iwx_tx_ring *, uint16_t, uint16_t);
 //int	iwx_disable_beacon_filter(struct iwx_softc *);
 //int	iwx_add_sta_cmd(struct iwx_softc *, struct iwx_node *, int);
 //int	iwx_add_aux_sta(struct iwx_softc *);
-int	iwx_rm_sta_cmd(struct iwx_softc *, struct iwx_node *);
+//int	iwx_rm_sta_cmd(struct iwx_softc *, struct iwx_node *);
 //int	iwx_fill_probe_req(struct iwx_softc *, struct iwx_scan_probe_req *);
 //int	iwx_config_umac_scan(struct iwx_softc *);
 //int	iwx_umac_scan(struct iwx_softc *, int);
@@ -606,7 +606,7 @@ int	iwx_rm_sta_cmd(struct iwx_softc *, struct iwx_node *);
 //int	iwx_bgscan(struct ieee80211com *);
 //int	iwx_umac_scan_abort(struct iwx_softc *);
 //int	iwx_scan_abort(struct iwx_softc *);
-int	iwx_enable_data_tx_queues(struct iwx_softc *);
+//int	iwx_enable_data_tx_queues(struct iwx_softc *);
 //int	iwx_auth(struct iwx_softc *);
 //int	iwx_deauth(struct iwx_softc *);
 //int	iwx_assoc(struct iwx_softc *);
@@ -1438,33 +1438,6 @@ iwx_read_firmware(struct iwx_softc *sc)
 				error = EINVAL;
 				goto parse_out;
 			}
-#ifdef not_in_iwx
-			paging_mem_size = le32_to_cpup((const uint32_t *)tlv_data);
-
-			IWX_DPRINTF(sc, IWX_DEBUG_FIRMWARE_TLV,
-			    "%s: Paging: paging enabled (size = %u bytes)\n",
-			    __func__, paging_mem_size);
-			if (paging_mem_size > IWX_MAX_PAGING_IMAGE_SIZE) {
-				device_printf(sc->sc_dev,
-					"%s: Paging: driver supports up to %u bytes for paging image\n",
-					__func__, IWX_MAX_PAGING_IMAGE_SIZE);
-				error = EINVAL;
-				goto out;
-			}
-			if (paging_mem_size & (IWX_FW_PAGING_SIZE - 1)) {
-				device_printf(sc->sc_dev,
-				    "%s: Paging: image isn't multiple %u\n",
-				    __func__, IWX_FW_PAGING_SIZE);
-				error = EINVAL;
-				goto out;
-			}
-
-			sc->sc_fw.img[IWX_UCODE_REGULAR].paging_mem_size =
-			    paging_mem_size;
-			usniffer_img = IWX_UCODE_REGULAR_USNIFFER;
-			sc->sc_fw.img[usniffer_img].paging_mem_size =
-			    paging_mem_size;
-#endif
 			break;
 
 		case IWX_UCODE_TLV_N_SCAN_CHANNELS:
@@ -1488,8 +1461,8 @@ iwx_read_firmware(struct iwx_softc *sc)
 			    le32toh(((const uint32_t *)tlv_data)[2]));
 			break;
 
-#if 0
 		case IWX_UCODE_TLV_FW_DBG_DEST: {
+#if 0
 			struct iwx_fw_dbg_dest_tlv_v1 *dest_v1 = NULL;
 
 			fw->dbg.dbg_dest_ver = (uint8_t *)tlv_data;
@@ -1508,10 +1481,12 @@ iwx_read_firmware(struct iwx_softc *sc)
 			    offsetof(struct iwx_fw_dbg_dest_tlv_v1, reg_ops);
 			fw->dbg.n_dest_reg /= sizeof(dest_v1->reg_ops[0]);
 			IWX_DPRINTF(sc, IWX_DEBUG_XMIT, "%s: found debug dest; n_dest_reg=%d\n", __func__, fw->dbg.n_dest_reg);
+#endif
 			break;
 		}
 
 		case IWX_UCODE_TLV_FW_DBG_CONF: {
+#if 0
 			struct iwx_fw_dbg_conf_tlv *conf = (void *)tlv_data;
 
 			if (!fw->dbg.dbg_dest_tlv_init ||
@@ -1522,10 +1497,12 @@ iwx_read_firmware(struct iwx_softc *sc)
 			IWX_DPRINTF(sc, IWX_DEBUG_TRACE, "Found debug configuration: %d\n", conf->id);
 			fw->dbg_conf_tlv[conf->id] = conf;
 			fw->dbg_conf_tlv_len[conf->id] = tlv_len;
+#endif
 			break;
 		}
 
 		case IWX_UCODE_TLV_UMAC_DEBUG_ADDRS: {
+#if 0
 			struct iwx_umac_debug_addrs *dbg_ptrs =
 				(void *)tlv_data;
 
@@ -1533,17 +1510,17 @@ iwx_read_firmware(struct iwx_softc *sc)
 				err = EINVAL;
 				goto parse_out;
 			}
-			if (sc->sc_device_family < IWX_DEVICE_FAMILY_22000)
-				break;
-			sc->sc_uc.uc_umac_error_event_table =
+			sc->uc_umac_error_event_table =
 				le32toh(dbg_ptrs->error_info_addr) &
 				~IWX_FW_ADDR_CACHE_CONTROL;
-			sc->sc_uc.error_event_table_tlv_status |=
+			sc->error_event_table_tlv_status |=
 				IWX_ERROR_EVENT_TABLE_UMAC;
+#endif
 			break;
 		}
 
 		case IWX_UCODE_TLV_LMAC_DEBUG_ADDRS: {
+#if 0
 			struct iwx_lmac_debug_addrs *dbg_ptrs =
 				(void *)tlv_data;
 
@@ -1558,9 +1535,9 @@ iwx_read_firmware(struct iwx_softc *sc)
 				~IWX_FW_ADDR_CACHE_CONTROL;
 			sc->sc_uc.error_event_table_tlv_status |=
 				IWX_ERROR_EVENT_TABLE_LMAC1;
+#endif
 			break;
 		}
-#endif
 
 		case IWX_UCODE_TLV_FW_MEM_SEG:
 		break;
@@ -1668,6 +1645,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
 	size = IWX_RX_MQ_RING_COUNT * sizeof(uint64_t);
 	error = iwx_dma_contig_alloc(sc->sc_dmat, &ring->free_desc_dma, size,
 	    256);
+	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error);
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "could not allocate RX ring DMA memory\n");
@@ -1678,6 +1656,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
 	/* Allocate RX status area (16-byte aligned). */
 	error = iwx_dma_contig_alloc(sc->sc_dmat, &ring->stat_dma,
 	    sizeof(*ring->stat), 16);
+	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error);
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "could not allocate RX status DMA memory\n");
@@ -1688,6 +1667,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
 	size = IWX_RX_MQ_RING_COUNT * sizeof(uint32_t);
 	error = iwx_dma_contig_alloc(sc->sc_dmat, &ring->used_desc_dma,
 	    size, 256);
+	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error);
 	if (error) {
 		device_printf(sc->sc_dev, "could not allocate RX ring DMA memory\n");
 		goto fail;
@@ -1807,6 +1787,7 @@ iwx_alloc_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring, int qid)
 	/* Allocate TX descriptors (256-byte aligned). */
 	size = qlen * sizeof (struct iwx_tfh_tfd);
 	error = iwx_dma_contig_alloc(sc->sc_dmat, &ring->desc_dma, size, 256);
+       	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error);
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "could not allocate TX ring DMA memory\n");
@@ -1823,6 +1804,7 @@ iwx_alloc_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring, int qid)
 
 	error = iwx_dma_contig_alloc(sc->sc_dmat, &ring->bc_tbl,
 	    sizeof(struct iwx_agn_scd_bc_tbl), 0);
+       	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error);
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "could not allocate byte count table DMA memory\n");
@@ -1832,6 +1814,7 @@ iwx_alloc_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring, int qid)
 	size = qlen * sizeof(struct iwx_device_cmd);
 	error = iwx_dma_contig_alloc(sc->sc_dmat, &ring->cmd_dma, size,
 	    IWX_FIRST_TB_SIZE_ALIGN);
+       	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error);
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not allocate cmd DMA memory\n");
 		goto fail;
@@ -1975,6 +1958,8 @@ iwx_disable_interrupts(struct iwx_softc *sc)
 	/* acknowledge all interrupts */
 	IWX_WRITE(sc, IWX_CSR_INT, ~0);
 	IWX_WRITE(sc, IWX_CSR_FH_INT_STATUS, ~0);
+       	device_printf(sc->sc_dev, "%s: finished?\n", __func__);
+
 }
 
 //#ifdef tbd
@@ -4783,7 +4768,9 @@ iwx_auth(struct ieee80211vap *vap, struct iwx_softc *sc)
 
 rm_sta:
 	if (generation == sc->sc_generation) {
+#ifdef tbd
 		iwx_rm_sta_cmd(sc, in);
+#endif
 //		sc->sc_flags &= ~IWX_FLAG_STA_ACTIVE;
 		sc->sc_flags &= ~0x20;
 	}
@@ -6560,11 +6547,13 @@ iwx_attach(device_t dev)
 
 	/* PCI attach */
 	error = iwx_pci_attach(dev);
+       	device_printf(sc->sc_dev, "%s: iwx_pci_attach returned %d\n",
+			__func__, error);
 	if (error != 0)
 		goto fail;
 
 	sc->sc_wantresp = -1;
-
+	
 	sc->sc_hw_rev = IWX_READ(sc, IWX_CSR_HW_REV);
 #if 0
 	/*
@@ -6709,6 +6698,8 @@ iwx_attach(device_t dev)
 #endif
 
 	error = iwx_read_firmware(sc);
+       	device_printf(sc->sc_dev, "%s: iwx_read_firmware() returned %d\n",
+			__func__, error);
 	if (error) {
 		goto fail;
 	} else if (sc->sc_fw.fw_fp == NULL) {
@@ -6730,11 +6721,16 @@ iwx_attach(device_t dev)
 	IWX_DPRINTF(sc, IWX_DEBUG_RESET | IWX_DEBUG_TRACE,
 	    "<-%s\n", __func__);
 
+       	device_printf(sc->sc_dev, "%s: outside fail: label, returning\n",
+			__func__);
 	return 0;
 
 	/* Free allocated memory if something failed during attachment. */
 fail:
+       	device_printf(sc->sc_dev, "%s: inside fail: label\n", __func__);
 	iwx_detach_local(sc, 0);
+       	device_printf(sc->sc_dev, "%s: inside fail: label, returning\n",
+			__func__);
 
 	return ENXIO;
 }
@@ -7149,7 +7145,9 @@ iwx_detach_local(struct iwx_softc *sc, int do_net80211)
 #endif
 	iwx_dma_contig_free(&sc->fw_dma);
 
+#ifdef not_in_iwx
 	iwx_free_fw_paging(sc);
+#endif
 
 	/* Finished with the hardware - detach things */
 	iwx_pci_detach(dev);

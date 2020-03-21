@@ -110,8 +110,10 @@ extern	uint32_t iwx_read_prph(struct iwx_softc *sc, uint32_t addr);
 extern	void iwx_write_prph(struct iwx_softc *sc, uint32_t addr, uint32_t val);
 extern	void iwx_write_prph64(struct iwx_softc *sc, uint64_t addr,
 	uint64_t val);
+#ifdef not_in_iwx
 extern	int iwx_poll_prph(struct iwx_softc *sc, uint32_t addr, uint32_t bits,
     uint32_t mask, int timeout);
+#endif
 extern	int iwx_read_mem(struct iwx_softc *sc, uint32_t addr, void *buf, int dwords);
 extern	int iwx_write_mem(struct iwx_softc *sc, uint32_t addr, const void *buf,
 	int dwords);

@@ -531,7 +531,7 @@ iwx_mac_ctxt_changed(struct iwx_softc *sc, struct ieee80211vap *vap)
 	return iwx_mac_ctx_send(sc, vap, IWX_FW_CTXT_ACTION_MODIFY);
 }
 
-#if 0
+#ifdef not_in_iwx
 static int
 iwm_mac_ctxt_remove(struct iwm_softc *sc, struct iwm_node *in)
 {
