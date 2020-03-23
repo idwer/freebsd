@@ -6512,6 +6512,7 @@ iwx_attach(device_t dev)
 	struct ieee80211com *ic = &sc->sc_ic;
 	int error;
 	int txq_i, i;
+	uint32_t hw_step;
 
 	sc->sc_dev = dev;
 	sc->sc_attached = 1;
@@ -6554,66 +6555,56 @@ iwx_attach(device_t dev)
 
 	sc->sc_wantresp = -1;
 	
+	iwx_enable_interrupts(sc);
+
 	sc->sc_hw_rev = IWX_READ(sc, IWX_CSR_HW_REV);
-#if 0
 	/*
 	 * In the 8000 HW family the format of the 4 bytes of CSR_HW_REV have
 	 * changed, and now the revision step also includes bit 0-1 (no more
 	 * "dash" value). To keep hw_rev backwards compatible - we'll store it
 	 * in the old format.
 	 */
-	if (sc->cfg->device_family >= IWM_DEVICE_FAMILY_8000) {
-		int ret;
-		uint32_t hw_step;
 
-		sc->sc_hw_rev = (sc->sc_hw_rev & 0xfff0) |
-				(IWM_CSR_HW_REV_STEP(sc->sc_hw_rev << 2) << 2);
+	sc->sc_hw_rev = (sc->sc_hw_rev & 0xfff0) |
+			(IWX_CSR_HW_REV_STEP(sc->sc_hw_rev << 2) << 2);
 
-		if (iwm_prepare_card_hw(sc) != 0) {
-			device_printf(dev, "could not initialize hardware\n");
-			goto fail;
-		}
-
-		/*
-		 * In order to recognize C step the driver should read the
-		 * chip version id located at the AUX bus MISC address.
-		 */
-		IWM_SETBITS(sc, IWM_CSR_GP_CNTRL,
-			    IWM_CSR_GP_CNTRL_REG_FLAG_INIT_DONE);
-		DELAY(2);
-
-		ret = iwm_poll_bit(sc, IWM_CSR_GP_CNTRL,
-				   IWM_CSR_GP_CNTRL_REG_FLAG_MAC_CLOCK_READY,
-				   IWM_CSR_GP_CNTRL_REG_FLAG_MAC_CLOCK_READY,
-				   25000);
-		if (!ret) {
-			device_printf(sc->sc_dev,
-			    "Failed to wake up the nic\n");
-			goto fail;
-		}
-
-		if (iwm_nic_lock(sc)) {
-			hw_step = iwm_read_prph(sc, IWM_WFPM_CTRL_REG);
-			hw_step |= IWM_ENABLE_WFPM;
-			iwm_write_prph(sc, IWM_WFPM_CTRL_REG, hw_step);
-			hw_step = iwm_read_prph(sc, IWM_AUX_MISC_REG);
-			hw_step = (hw_step >> IWM_HW_STEP_LOCATION_BITS) & 0xF;
-			if (hw_step == 0x3)
-				sc->sc_hw_rev = (sc->sc_hw_rev & 0xFFFFFFF3) |
-						(IWM_SILICON_C_STEP << 2);
-			iwm_nic_unlock(sc);
-		} else {
-			device_printf(sc->sc_dev, "Failed to lock the nic\n");
-			goto fail;
-		}
+	if (iwx_prepare_card_hw(sc) != 0) {
+		device_printf(dev, "could not initialize hardware\n");
+		goto fail;
 	}
 
-	/* special-case 7265D, it has the same PCI IDs. */
-	if (sc->cfg == &iwm7265_cfg &&
-	    (sc->sc_hw_rev & IWM_CSR_HW_REV_TYPE_MSK) == IWM_CSR_HW_REV_TYPE_7265D) {
-		sc->cfg = &iwm7265d_cfg;
+	/*
+	 * In order to recognize C step the driver should read the
+	 * chip version id located at the AUX bus MISC address.
+	 */
+	IWX_SETBITS(sc, IWX_CSR_GP_CNTRL,
+		    IWX_CSR_GP_CNTRL_REG_FLAG_INIT_DONE);
+	DELAY(2);
+
+	error = iwx_poll_bit(sc, IWX_CSR_GP_CNTRL,
+			   IWX_CSR_GP_CNTRL_REG_FLAG_MAC_CLOCK_READY,
+			   IWX_CSR_GP_CNTRL_REG_FLAG_MAC_CLOCK_READY,
+			   25000);
+	if (!error) {
+		device_printf(sc->sc_dev,
+		    "Failed to wake up the nic\n");
+		goto fail;
 	}
-#endif
+
+	if (iwx_nic_lock(sc)) {
+		hw_step = iwx_read_prph(sc, IWX_WFPM_CTRL_REG);
+		hw_step |= IWX_ENABLE_WFPM;
+		iwx_write_prph(sc, IWX_WFPM_CTRL_REG, hw_step);
+		hw_step = iwx_read_prph(sc, IWX_AUX_MISC_REG);
+		hw_step = (hw_step >> IWX_HW_STEP_LOCATION_BITS) & 0xF;
+		if (hw_step == 0x3)
+			sc->sc_hw_rev = (sc->sc_hw_rev & 0xFFFFFFF3) |
+					(IWX_SILICON_C_STEP << 2);
+		iwx_nic_unlock(sc);
+	} else {
+		device_printf(sc->sc_dev, "Failed to lock the nic\n");
+		goto fail;
+	}
 
 	/* Allocate DMA memory for firmware transfers. */
 	if ((error = iwx_alloc_fwmem(sc)) != 0) {
