@@ -86,6 +86,14 @@ struct iwx_nvm_access_complete_cmd {
 	uint32_t reserved;
 } __packed; /* NVM_ACCESS_COMPLETE_CMD_API_S_VER_1 */
 
+#if 0
+extern	int iwx_ctxt_info_alloc_dma(struct iwx_softc *sc,
+    const struct iwx_fw_desc *fw_sect, struct iwx_dma_info *dram);
+extern	int iwx_get_num_sections(const struct iwx_fw_img *fws, int start);
+extern	void iwx_ctxt_info_free_fw_img(struct iwx_softc *sc);
+#endif
+
+#ifdef not_in_iwx
 /*
  * Image paging calculations
  */
@@ -103,7 +111,6 @@ struct iwx_nvm_access_complete_cmd {
 #define IWX_PAGING_CMD_NUM_OF_PAGES_IN_LAST_GRP_POS 0
 #define IWM_PAGING_TLV_SECURE_MASK 1
 
-#ifdef not_in_iwx
 extern	void iwx_free_fw_paging(struct iwx_softc *);
 extern	int iwx_save_fw_paging(struct iwx_softc *, const struct iwx_fw_img *);
 extern	int iwx_send_paging_cmd(struct iwx_softc *, const struct iwx_fw_img *);

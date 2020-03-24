@@ -1212,6 +1212,27 @@ struct iwx_tlv_ucode_header {
 /* unused in iwm and in iwx */
 // #define IWM_SCD_CONTEXT_MEM_UPPER_BOUND	(IWM_SCD_MEM_LOWER_BOUND + 0x6A0)
 
+#define IWX_SCD_CONTEXT_QUEUE_OFFSET(x)\
+	(IWX_SCD_CONTEXT_MEM_LOWER_BOUND + ((x) * 8))
+
+/* agn SCD */
+#define IWX_SCD_QUEUE_STTS_REG_POS_TXF		(0)
+#define IWX_SCD_QUEUE_STTS_REG_POS_ACTIVE	(3)
+#define IWX_SCD_QUEUE_STTS_REG_POS_WSL		(4)
+#define IWX_SCD_QUEUE_STTS_REG_POS_SCD_ACT_EN	(19)
+#define IWX_SCD_QUEUE_STTS_REG_MSK		(0x017F0000)
+
+#define IWM_SCD_QUEUE_CTX_REG1_CREDIT_POS	(8)
+#define IWM_SCD_QUEUE_CTX_REG1_CREDIT_MSK	(0x00FFFF00)
+#define IWM_SCD_QUEUE_CTX_REG1_SUPER_CREDIT_POS	(24)
+#define IWM_SCD_QUEUE_CTX_REG1_SUPER_CREDIT_MSK	(0xFF000000)
+#define IWX_SCD_QUEUE_CTX_REG2_WIN_SIZE_POS	(0)
+#define IWX_SCD_QUEUE_CTX_REG2_WIN_SIZE_MSK	(0x0000007F)
+#define IWX_SCD_QUEUE_CTX_REG2_FRAME_LIMIT_POS	(16)
+#define IWX_SCD_QUEUE_CTX_REG2_FRAME_LIMIT_MSK	(0x007F0000)
+#define IWM_SCD_GP_CTRL_ENABLE_31_QUEUES	(1 << 0)
+#define IWM_SCD_GP_CTRL_AUTO_ACTIVE_MODE	(1 << 18)
+
 /* Translation Data */
 #define IWX_SCD_TRANS_TBL_MEM_LOWER_BOUND (IWX_SCD_MEM_LOWER_BOUND + 0x7E0)
 #define IWX_SCD_TRANS_TBL_MEM_UPPER_BOUND (IWX_SCD_MEM_LOWER_BOUND + 0x808)
@@ -1225,10 +1246,24 @@ struct iwx_tlv_ucode_header {
 #define IWM_SCD_ACTIVE		(IWM_SCD_BASE + 0x14)
 #define IWM_SCD_QUEUECHAIN_SEL	(IWM_SCD_BASE + 0xe8)
 #define IWX_SCD_CHAINEXT_EN	(IWX_SCD_BASE + 0x244)
-#define IWM_SCD_AGGR_SEL	(IWM_SCD_BASE + 0x248)
+#define IWX_SCD_AGGR_SEL	(IWX_SCD_BASE + 0x248)
 #define IWM_SCD_INTERRUPT_MASK	(IWM_SCD_BASE + 0x108)
 #define IWM_SCD_GP_CTRL		(IWM_SCD_BASE + 0x1a8)
-#define IWM_SCD_EN_CTRL		(IWM_SCD_BASE + 0x254)
+#define IWX_SCD_EN_CTRL		(IWX_SCD_BASE + 0x254)
+
+static inline unsigned int IWX_SCD_QUEUE_RDPTR(unsigned int chnl)
+{
+	if (chnl < 20)
+		return IWX_SCD_BASE + 0x68 + chnl * 4;
+	return IWX_SCD_BASE + 0x2B4 + (chnl - 20) * 4;
+}
+
+static inline unsigned int IWX_SCD_QUEUE_STATUS_BITS(unsigned int chnl)
+{
+	if (chnl < 20)
+		return IWX_SCD_BASE + 0x10c + chnl * 4;
+	return IWX_SCD_BASE + 0x384 + (chnl - 20) * 4;
+}
 
 /*
  * END iwl-prph.h
@@ -6548,6 +6583,12 @@ struct iwm_dts_measurement_notif_v2 {
 	int32_t voltage;
 	int32_t threshold_idx;
 } __packed; /* TEMPERATURE_MEASUREMENT_TRIGGER_NTFY_S_VER_2 */
+
+/*
+ * Some cherry-picked definitions
+ */
+
+#define IWX_FRAME_LIMIT	64
 
 /*
  * These functions retrieve specific information from the id field in

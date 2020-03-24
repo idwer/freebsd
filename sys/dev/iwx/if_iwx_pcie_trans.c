@@ -286,6 +286,8 @@ iwx_nic_lock(struct iwx_softc *sc)
 	IWX_SETBITS(sc, IWX_CSR_GP_CNTRL,
 	    IWX_CSR_GP_CNTRL_REG_FLAG_MAC_ACCESS_REQ);
 
+	DELAY(2);
+
 	if (iwx_poll_bit(sc, IWX_CSR_GP_CNTRL,
 	    IWX_CSR_GP_CNTRL_REG_VAL_MAC_ACCESS_EN,
 	    IWX_CSR_GP_CNTRL_REG_FLAG_MAC_CLOCK_READY
