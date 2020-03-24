@@ -251,9 +251,6 @@ static void	iwx_fw_info_free(struct iwx_fw_info *);
 static int	iwx_read_firmware(struct iwx_softc *);
 static int	iwx_alloc_fwmem(struct iwx_softc *);
 static int	iwx_alloc_sched(struct iwx_softc *);
-#ifdef not_in_iwx
-// static int	iwx_alloc_kw(struct iwx_softc *);
-#endif
 static int	iwx_alloc_ict(struct iwx_softc *);
 static int	iwx_alloc_rx_ring(struct iwx_softc *, struct iwx_rx_ring *);
 static void	iwx_reset_rx_ring(struct iwx_softc *, struct iwx_rx_ring *);
@@ -1615,15 +1612,6 @@ iwx_alloc_sched(struct iwx_softc *sc)
 	return iwx_dma_contig_alloc(sc->sc_dmat, &sc->sched_dma,
 	    nitems(sc->txq) * sizeof(struct iwx_agn_scd_bc_tbl), 1024);
 }
-
-/* keep-warm page is used internally by the card.  see iwl-fh.h for more info */
-#ifdef not_in_iwx
-static int
-iwx_alloc_kw(struct iwx_softc *sc)
-{
-	return iwx_dma_contig_alloc(sc->sc_dmat, &sc->kw_dma, 4096, 4096);
-}
-#endif
 
 /* interrupt cause table */
 static int
@@ -6612,14 +6600,6 @@ iwx_attach(device_t dev)
 		goto fail;
 	}
 
-#ifdef not_in_iwx
-/* Allocate "Keep Warm" page. */
-	if ((error = iwx_alloc_kw(sc)) != 0) {
-		device_printf(dev, "could not allocate keep warm page\n");
-		goto fail;
-	}
-#endif
-
 	/* We use ICT interrupts */
 	if ((error = iwx_alloc_ict(sc)) != 0) {
 		device_printf(dev, "could not allocate ICT table\n");
@@ -7131,9 +7111,6 @@ iwx_detach_local(struct iwx_softc *sc, int do_net80211)
 	/* Free scheduler */
 	iwx_dma_contig_free(&sc->sched_dma);
 	iwx_dma_contig_free(&sc->ict_dma);
-#ifdef not_in_iwx
-	iwx_dma_contig_free(&sc->kw_dma);
-#endif
 	iwx_dma_contig_free(&sc->fw_dma);
 
 #ifdef not_in_iwx
