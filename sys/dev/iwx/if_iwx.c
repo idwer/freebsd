@@ -1633,7 +1633,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
 	size = IWX_RX_MQ_RING_COUNT * sizeof(uint64_t);
 	error = iwx_dma_contig_alloc(sc->sc_dmat, &ring->free_desc_dma, size,
 	    256);
-	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error);
+	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error); /* todo if_iwx: remove before submitting for review */
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "could not allocate RX ring DMA memory\n");
@@ -1644,7 +1644,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
 	/* Allocate RX status area (16-byte aligned). */
 	error = iwx_dma_contig_alloc(sc->sc_dmat, &ring->stat_dma,
 	    sizeof(*ring->stat), 16);
-	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error);
+	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error); /* todo if_iwx: remove before submitting for review */
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "could not allocate RX status DMA memory\n");
@@ -1655,7 +1655,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
 	size = IWX_RX_MQ_RING_COUNT * sizeof(uint32_t);
 	error = iwx_dma_contig_alloc(sc->sc_dmat, &ring->used_desc_dma,
 	    size, 256);
-	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error);
+	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error); /* todo if_iwx: remove before submitting for review */
 	if (error) {
 		device_printf(sc->sc_dev, "could not allocate RX ring DMA memory\n");
 		goto fail;
@@ -1775,7 +1775,7 @@ iwx_alloc_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring, int qid)
 	/* Allocate TX descriptors (256-byte aligned). */
 	size = qlen * sizeof (struct iwx_tfh_tfd);
 	error = iwx_dma_contig_alloc(sc->sc_dmat, &ring->desc_dma, size, 256);
-       	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error);
+	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error); /* todo if_iwx: remove before submitting for review */
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "could not allocate TX ring DMA memory\n");
@@ -1792,7 +1792,7 @@ iwx_alloc_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring, int qid)
 
 	error = iwx_dma_contig_alloc(sc->sc_dmat, &ring->bc_tbl,
 	    sizeof(struct iwx_agn_scd_bc_tbl), 0);
-       	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error);
+	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error); /* todo if_iwx: remove before submitting for review */
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "could not allocate byte count table DMA memory\n");
@@ -1802,7 +1802,7 @@ iwx_alloc_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring, int qid)
 	size = qlen * sizeof(struct iwx_device_cmd);
 	error = iwx_dma_contig_alloc(sc->sc_dmat, &ring->cmd_dma, size,
 	    IWX_FIRST_TB_SIZE_ALIGN);
-       	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error);
+	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error); /* todo if_iwx: remove before submitting for review */
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not allocate cmd DMA memory\n");
 		goto fail;
@@ -1946,7 +1946,7 @@ iwx_disable_interrupts(struct iwx_softc *sc)
 	/* acknowledge all interrupts */
 	IWX_WRITE(sc, IWX_CSR_INT, ~0);
 	IWX_WRITE(sc, IWX_CSR_FH_INT_STATUS, ~0);
-       	device_printf(sc->sc_dev, "%s: finished?\n", __func__);
+	device_printf(sc->sc_dev, "%s: finished?\n", __func__); /* todo if_iwx: remove before submitting for review */
 
 }
 
@@ -3238,7 +3238,7 @@ iwx_load_firmware(struct iwx_softc *sc)
 
 	/* wait for the firmware to load */
 	/* todo if_iwx: apply proper timing code */
-#if 0
+#if tbd
 	for (w = 0; !sc->sc_uc.uc_intr && w < 10; w++) {
 		err = tsleep_nsec(&sc->sc_uc, 0, "iwxuc", MSEC_TO_NSEC(100));
 	}
@@ -6536,8 +6536,8 @@ iwx_attach(device_t dev)
 
 	/* PCI attach */
 	error = iwx_pci_attach(dev);
-       	device_printf(sc->sc_dev, "%s: iwx_pci_attach returned %d\n",
-			__func__, error);
+	device_printf(sc->sc_dev, "%s: iwx_pci_attach returned %d\n",
+			__func__, error); /* todo if_iwx: remove before submitting for review */
 	if (error != 0)
 		goto fail;
 
@@ -6669,8 +6669,8 @@ iwx_attach(device_t dev)
 #endif
 
 	error = iwx_read_firmware(sc);
-       	device_printf(sc->sc_dev, "%s: iwx_read_firmware() returned %d\n",
-			__func__, error);
+	device_printf(sc->sc_dev, "%s: iwx_read_firmware() returned %d\n",
+			__func__, error); /* todo if_iwx: remove before submitting for review */
 	if (error) {
 		goto fail;
 	} else if (sc->sc_fw.fw_fp == NULL) {
@@ -6692,16 +6692,16 @@ iwx_attach(device_t dev)
 	IWX_DPRINTF(sc, IWX_DEBUG_RESET | IWX_DEBUG_TRACE,
 	    "<-%s\n", __func__);
 
-       	device_printf(sc->sc_dev, "%s: outside fail: label, returning\n",
-			__func__);
+	device_printf(sc->sc_dev, "%s: outside fail: label, returning\n",
+			__func__); /* todo if_iwx: remove before submitting for review */
 	return 0;
 
 	/* Free allocated memory if something failed during attachment. */
 fail:
-       	device_printf(sc->sc_dev, "%s: inside fail: label\n", __func__);
+	device_printf(sc->sc_dev, "%s: inside fail: label\n", __func__); /* todo if_iwx: remove before submitting for review */
 	iwx_detach_local(sc, 0);
-       	device_printf(sc->sc_dev, "%s: inside fail: label, returning\n",
-			__func__);
+	device_printf(sc->sc_dev, "%s: inside fail: label, returning\n",
+			__func__); /* todo if_iwx: remove before submitting for review */
 
 	return ENXIO;
 }
