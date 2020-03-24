@@ -76,7 +76,7 @@
 #ifndef __IWM_CONFIG_H__
 #define __IWM_CONFIG_H__
 
-enum iwm_device_family {
+enum iwx_device_family {
 	IWM_DEVICE_FAMILY_UNDEFINED,
 	IWX_DEVICE_FAMILY_22000,
 	IWX_DEVICE_FAMILY_22560,
@@ -130,7 +130,7 @@ struct iwx_cfg {
 	// sc_fwname in iwx_softc @ openbsd
 	const char *fw_name;
 	uint16_t eeprom_size;
-	enum iwm_device_family device_family;
+	enum iwx_device_family device_family;
 	int host_interrupt_operation_mode;
 #ifdef not_in_iwx
 //	int mqrx_supported;

@@ -645,10 +645,10 @@ void	iwx_tx_update_byte_tbl(struct iwx_tx_ring *, uint16_t, uint16_t);
 //int	iwx_resume(struct iwx_softc *);
 
 /* extra's, because freebsd complains :) */
-int	iwx_ctxt_info_alloc_dma(struct iwx_softc *sc,
-    const struct iwx_fw_desc *fw_sect, struct iwx_dma_info *dram);
-int	iwx_get_num_sections(const struct iwx_fw_img *fws, int start);
-void	iwx_ctxt_info_free_fw_img(struct iwx_softc *sc);
+//int	iwx_ctxt_info_alloc_dma(struct iwx_softc *sc,
+//    const struct iwx_fw_desc *fw_sect, struct iwx_dma_info *dram);
+//int	iwx_get_num_sections(const struct iwx_fw_img *fws, int start);
+//void	iwx_ctxt_info_free_fw_img(struct iwx_softc *sc);
 /* end openbsd */
 
 static int	iwx_lar_disable = 0;
@@ -670,376 +670,6 @@ iwx_store_cscheme(struct iwx_softc *sc, const uint8_t *data, size_t dlen)
 	/* we don't actually store anything for now, always use s/w crypto */
 
 	return 0;
-}
-
-int
-iwx_ctxt_info_alloc_dma(struct iwx_softc *sc,
-    const struct iwx_fw_desc *fw_sect, struct iwx_dma_info *dram)
-{
-	int err = iwx_dma_contig_alloc(sc->sc_dmat, dram, fw_sect->len, 0);
-	if (err) {
-		IWX_DPRINTF(sc, IWX_DEBUG_FW, "could not allocate context info DMA memory\n");
-		return err;
-	}
-
-	memcpy(dram->vaddr, fw_sect->data, fw_sect->len);
-
-	return 0;
-}
-
-void iwx_ctxt_info_free_paging(struct iwx_softc *sc)
-{
-	struct iwx_self_init_dram *dram = &sc->init_dram;
-	int i;
-
-	if (!dram->paging)
-		return;
-
-	/* free paging*/
-	for (i = 0; i < dram->paging_cnt; i++)
-		iwx_dma_contig_free(dram->paging);
-
-//	free(dram->paging, M_DEVBUF, dram->paging_cnt * sizeof(*dram->paging));
-	free(dram->paging, M_DEVBUF);
-	dram->paging_cnt = 0;
-	dram->paging = NULL;
-}
-
-int
-// iwx_get_num_sections(const struct iwx_fw_sects *fws, int start)
-iwx_get_num_sections(const struct iwx_fw_img *fws, int start)
-{
-	int i = 0;
-
-	while (start < fws->fw_count &&
-	       fws->fw_sect[start].offset != IWX_CPU1_CPU2_SEPARATOR_SECTION &&
-	       fws->fw_sect[start].offset != IWX_PAGING_SEPARATOR_SECTION) {
-		start++;
-		i++;
-	}
-
-	return i;
-}
-
-int
-// iwx_init_fw_sec(struct iwx_softc *sc, const struct iwx_fw_sects *fws,
-iwx_init_fw_sec(struct iwx_softc *sc, const struct iwx_fw_img *fws,
-    struct iwx_context_info_dram *ctxt_dram)
-{
-	struct iwx_self_init_dram *dram = &sc->init_dram;
-	int i, ret, lmac_cnt, umac_cnt, paging_cnt;
-
-	KASSERT(dram->paging == NULL, ("DRAM is empty"));
-
-	lmac_cnt = iwx_get_num_sections(fws, 0);
-	/* add 1 due to separator */
-	umac_cnt = iwx_get_num_sections(fws, lmac_cnt + 1);
-	/* add 2 due to separators */
-	paging_cnt = iwx_get_num_sections(fws, lmac_cnt + umac_cnt + 2);
-
-	dram->fw = mallocarray(umac_cnt + lmac_cnt, sizeof(*dram->fw),
-	    M_DEVBUF,  M_ZERO | M_NOWAIT);
-	if (!dram->fw)
-		return ENOMEM;
-	dram->paging = mallocarray(paging_cnt, sizeof(*dram->paging),
-	    M_DEVBUF, M_ZERO | M_NOWAIT);
-	if (!dram->paging)
-		return ENOMEM;
-
-	/* initialize lmac sections */
-	for (i = 0; i < lmac_cnt; i++) {
-		ret = iwx_ctxt_info_alloc_dma(sc, &fws->fw_sect[i],
-						   &dram->fw[dram->fw_cnt]);
-		if (ret)
-			return ret;
-		ctxt_dram->lmac_img[i] =
-			htole64(dram->fw[dram->fw_cnt].paddr);
-		IWX_DPRINTF(sc, IWX_DEBUG_FW, "%s: firmware LMAC section %d at 0x%llx size %lld\n", __func__, i,
-		    (unsigned long long)dram->fw[dram->fw_cnt].paddr,
-		    (unsigned long long)dram->fw[dram->fw_cnt].size);
-		dram->fw_cnt++;
-	}
-
-	/* initialize umac sections */
-	for (i = 0; i < umac_cnt; i++) {
-		/* access FW with +1 to make up for lmac separator */
-		ret = iwx_ctxt_info_alloc_dma(sc,
-		    &fws->fw_sect[dram->fw_cnt + 1], &dram->fw[dram->fw_cnt]);
-		if (ret)
-			return ret;
-		ctxt_dram->umac_img[i] =
-			htole64(dram->fw[dram->fw_cnt].paddr);
-		IWX_DPRINTF(sc, IWX_DEBUG_FW, "%s: firmware UMAC section %d at 0x%llx size %lld\n", __func__, i,
-			(unsigned long long)dram->fw[dram->fw_cnt].paddr,
-			(unsigned long long)dram->fw[dram->fw_cnt].size);
-		dram->fw_cnt++;
-	}
-
-	/*
-	 * Initialize paging.
-	 * Paging memory isn't stored in dram->fw as the umac and lmac - it is
-	 * stored separately.
-	 * This is since the timing of its release is different -
-	 * while fw memory can be released on alive, the paging memory can be
-	 * freed only when the device goes down.
-	 * Given that, the logic here in accessing the fw image is a bit
-	 * different - fw_cnt isn't changing so loop counter is added to it.
-	 */
-	for (i = 0; i < paging_cnt; i++) {
-		/* access FW with +2 to make up for lmac & umac separators */
-		int fw_idx = dram->fw_cnt + i + 2;
-
-		ret = iwx_ctxt_info_alloc_dma(sc,
-		    &fws->fw_sect[fw_idx], &dram->paging[i]);
-		if (ret)
-			return ret;
-
-		ctxt_dram->virtual_img[i] = htole64(dram->paging[i].paddr);
-		IWX_DPRINTF(sc, IWX_DEBUG_FW, "%s: firmware paging section %d at 0x%llx size %lld\n", __func__, i,
-		    (unsigned long long)dram->paging[i].paddr,
-		    (unsigned long long)dram->paging[i].size);
-		dram->paging_cnt++;
-	}
-
-	return 0;
-}
-
-int
-iwx_alloc_fw_monitor_block(struct iwx_softc *sc, uint8_t max_power,
-    uint8_t min_power)
-{
-	struct iwx_dma_info *fw_mon = &sc->fw_mon;
-	uint32_t size = 0;
-	uint8_t power;
-	int err;
-
-	if (fw_mon->size)
-		return 0;
-
-	for (power = max_power; power >= min_power; power--) {
-		size = (1 << power);
-
-		err = iwx_dma_contig_alloc(sc->sc_dmat, fw_mon, size, 0);
-		if (err)
-			continue;
-
-		IWX_DPRINTF(sc, IWX_DEBUG_FW, "allocated 0x%08x bytes for firmware monitor.\n", size);
-		break;
-	}
-
-	if (err) {
-		fw_mon->size = 0;
-		return err;
-	}
-
-	if (power != max_power)
-		IWX_DPRINTF(sc, IWX_DEBUG_TRACE, "Sorry - debug buffer is only %luK while you requested %luK\n",
-			(unsigned long)(1 << (power - 10)),
-			(unsigned long)(1 << (max_power - 10)));
-
-	return 0;
-}
-
-int
-iwx_alloc_fw_monitor(struct iwx_softc *sc, uint8_t max_power)
-{
-	if (!max_power) {
-		/* default max_power is maximum */
-		max_power = 26;
-	} else {
-		max_power += 11;
-	}
-
-	if (max_power > 26) {
-		 IWX_DPRINTF(sc, IWX_DEBUG_FW, "External buffer size for monitor is too big %d, "
-		     "check the FW TLV\n", max_power);
-		return 0;
-	}
-
-	if (sc->fw_mon.size)
-		return 0;
-
-	return iwx_alloc_fw_monitor_block(sc, max_power, 11);
-}
-
-int
-iwx_apply_debug_destination(struct iwx_softc *sc)
-{
-	struct iwx_fw_dbg_dest_tlv_v1 *dest_v1;
-	int i, err;
-	uint8_t mon_mode, size_power, base_shift, end_shift;
-	uint32_t base_reg, end_reg;
-
-	dest_v1 = sc->sc_fw.dbg.dbg_dest_tlv_v1;
-	mon_mode = dest_v1->monitor_mode;
-	size_power = dest_v1->size_power;
-	base_reg = le32toh(dest_v1->base_reg);
-	end_reg = le32toh(dest_v1->end_reg);
-	base_shift = dest_v1->base_shift;
-	end_shift = dest_v1->end_shift;
-
-	IWX_DPRINTF(sc, IWX_DEBUG_STATE, "applying debug destination %d\n", mon_mode);
-
-	if (mon_mode == EXTERNAL_MODE) {
-		err = iwx_alloc_fw_monitor(sc, size_power);
-		if (err)
-			return err;
-	}
-
-	if (!iwx_nic_lock(sc))
-		return EBUSY;
-
-	for (i = 0; i < sc->sc_fw.dbg.n_dest_reg; i++) {
-		uint32_t addr, val;
-		uint8_t op;
-
-		addr = le32toh(dest_v1->reg_ops[i].addr);
-		val = le32toh(dest_v1->reg_ops[i].val);
-		op = dest_v1->reg_ops[i].op;
-
-		IWX_DPRINTF(sc, IWX_DEBUG_STATE, "%s: op=%u addr=%u val=%u\n", __func__, op, addr, val);
-		switch (op) {
-		case CSR_ASSIGN:
-			IWX_WRITE(sc, addr, val);
-			break;
-		case CSR_SETBIT:
-			IWX_SETBITS(sc, addr, (1 << val));
-			break;
-		case CSR_CLEARBIT:
-			IWX_CLRBITS(sc, addr, (1 << val));
-			break;
-		case PRPH_ASSIGN:
-			iwx_write_prph(sc, addr, val);
-			break;
-		case PRPH_SETBIT:
-			iwx_set_bits_prph(sc, addr, (1 << val));
-			break;
-		case PRPH_CLEARBIT:
-			iwx_clear_bits_prph(sc, addr, (1 << val));
-			break;
-		case PRPH_BLOCKBIT:
-			if (iwx_read_prph(sc, addr) & (1 << val))
-				goto monitor;
-			break;
-		default:
-			IWX_DPRINTF(sc, IWX_DEBUG_FW, "FW debug - unknown OP %d\n", op);
-			break;
-		}
-	}
-
-monitor:
-	if (mon_mode == EXTERNAL_MODE && sc->fw_mon.size) {
-		iwx_write_prph(sc, le32toh(base_reg),
-		    sc->fw_mon.paddr >> base_shift);
-		iwx_write_prph(sc, end_reg,
-		    (sc->fw_mon.paddr + sc->fw_mon.size - 256)
-		    >> end_shift);
-	}
-
-	iwx_nic_unlock(sc);
-	return 0;
-}
-
-int
-// iwx_ctxt_info_init(struct iwx_softc *sc, const struct iwx_fw_sects *fws)
-iwx_ctxt_info_init(struct iwx_softc *sc, const struct iwx_fw_img *fws)
-{
-	struct iwx_context_info *ctxt_info;
-	struct iwx_context_info_rbd_cfg *rx_cfg;
-	uint32_t control_flags = 0, rb_size;
-	int err;
-
-	err = iwx_dma_contig_alloc(sc->sc_dmat, &sc->ctxt_info_dma,
-	    sizeof(*ctxt_info), 0);
-	if (err) {
-		device_printf(sc->sc_dev, "could not allocate context info DMA memory\n");
-		return err;
-	}
-	ctxt_info = sc->ctxt_info_dma.vaddr;
-
-	ctxt_info->version.version = 0;
-	ctxt_info->version.mac_id =
-		htole16((uint16_t)IWX_READ(sc, IWX_CSR_HW_REV));
-	/* size is in DWs */
-	ctxt_info->version.size = htole16(sizeof(*ctxt_info) / 4);
-
-	if (sc->cfg->device_family >= IWX_DEVICE_FAMILY_22560)
-
-		rb_size = IWX_CTXT_INFO_RB_SIZE_2K;
-	else
-		rb_size = IWX_CTXT_INFO_RB_SIZE_4K;
-
-	KASSERT(IWX_RX_QUEUE_CB_SIZE(IWX_MQ_RX_TABLE_SIZE) < 0xF,
-			("table size too large"));
-	control_flags = IWX_CTXT_INFO_TFD_FORMAT_LONG |
-			(IWX_RX_QUEUE_CB_SIZE(IWX_MQ_RX_TABLE_SIZE) <<
-			 IWX_CTXT_INFO_RB_CB_SIZE_POS) |
-			(rb_size << IWX_CTXT_INFO_RB_SIZE_POS);
-	ctxt_info->control.control_flags = htole32(control_flags);
-
-	/* initialize RX default queue */
-	rx_cfg = &ctxt_info->rbd_cfg;
-	rx_cfg->free_rbd_addr = htole64(sc->rxq.free_desc_dma.paddr);
-	rx_cfg->used_rbd_addr = htole64(sc->rxq.used_desc_dma.paddr);
-	rx_cfg->status_wr_ptr = htole64(sc->rxq.stat_dma.paddr);
-
-	/* initialize TX command queue */
-	ctxt_info->hcmd_cfg.cmd_queue_addr =
-		htole64(sc->txq[IWX_DQA_CMD_QUEUE].desc_dma.paddr);
-	ctxt_info->hcmd_cfg.cmd_queue_size =
-		IWX_TFD_QUEUE_CB_SIZE(IWX_CMD_QUEUE_SIZE);
-
-	/* allocate ucode sections in dram and set addresses */
-	err = iwx_init_fw_sec(sc, fws, &ctxt_info->dram);
-	if (err) {
-		iwx_ctxt_info_free(sc);
-		return err;
-	}
-
-	/* Configure debug, if exists */
-	if (sc->sc_fw.dbg.dbg_dest_tlv_v1) {
-		err = iwx_apply_debug_destination(sc);
-		if (err)
-			return err;
-	}
-
-	/* kick FW self load */
-	IWX_WRITE_8(sc, IWX_CSR_CTXT_INFO_BA, sc->ctxt_info_dma.paddr);
-	if (!iwx_nic_lock(sc))
-		return EBUSY;
-	iwx_write_prph(sc, IWX_UREG_CPU_INIT_RUN, 1);
-	iwx_nic_unlock(sc);
-
-	/* Context info will be released upon alive or failure to get one */
-
-	return 0;
-}
-
-void
-iwx_ctxt_info_free_fw_img(struct iwx_softc *sc)
-{
-	struct iwx_self_init_dram *dram = &sc->init_dram;
-	int i;
-
-	if (!dram->fw) {
-		KASSERT(dram->fw_cnt == 0, ("array fw_cnt is not empty"));
-		return;
-	}
-
-	for (i = 0; i < dram->fw_cnt; i++)
-		iwx_dma_contig_free(&dram->fw[i]);
-
-//	free(dram->fw, M_DEVBUF, dram->fw_cnt * sizeof(dram->fw[0]));
-	free(dram->fw, M_DEVBUF);
-	dram->fw_cnt = 0;
-	dram->fw = NULL;
-}
-
-void
-iwx_ctxt_info_free(struct iwx_softc *sc)
-{
-	iwx_dma_contig_free(&sc->ctxt_info_dma);
-	iwx_ctxt_info_free_fw_img(sc);
 }
 
 static int
@@ -1878,7 +1508,8 @@ iwx_reset_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring)
 	ring->cur = 0;
 //	ring->tali = 0;
 
-	if (ring->qid == IWX_DQA_CMD_QUEUE && sc->cmd_hold_nic_awake)
+//	if (ring->qid == IWX_DQA_CMD_QUEUE && sc->cmd_hold_nic_awake)
+	if (ring->qid == IWX_CMD_QUEUE && sc->cmd_hold_nic_awake)
 		iwx_pcie_clear_cmd_in_flight(sc);
 }
 
@@ -2129,69 +1760,145 @@ int
 iwx_enable_txq(struct iwx_softc *sc, int sta_id, int qid, int tid,
     int num_slots)
 {
-	struct iwx_tx_queue_cfg_cmd cmd;
-	struct iwx_rx_packet *pkt;
-	struct iwx_tx_queue_cfg_rsp *resp;
-	struct iwx_host_cmd hcmd = {
-		.id = IWX_SCD_QUEUE_CFG,
-		.flags = IWX_CMD_WANT_SKB,
-//		.resp_pkt_len = sizeof(*pkt) + sizeof(*resp),
-	};
-	struct iwx_tx_ring *ring = &sc->txq[qid];
-	int err, fwqid;
-	uint32_t wr_idx;
-	size_t resp_len;
+	int qmsk;
 
-	iwx_reset_tx_ring(sc, ring);
+	qmsk = 1 << qid;
 
-	memset(&cmd, 0, sizeof(cmd));
-	cmd.sta_id = sta_id;
-	cmd.tid = tid;
-	cmd.flags = htole16(IWX_TX_QUEUE_CFG_ENABLE_QUEUE);
-	cmd.cb_size = htole32(IWX_TFD_QUEUE_CB_SIZE(num_slots));
-	cmd.byte_cnt_addr = htole64(ring->bc_tbl.paddr);
-	cmd.tfdq_addr = htole64(ring->desc_dma.paddr);
-
-	hcmd.data[0] = &cmd;
-	hcmd.len[0] = sizeof(cmd);
-
-	err = iwx_send_cmd(sc, &hcmd);
-	if (err)
-		return err;
-
-	pkt = hcmd.resp_pkt;
-	if (!pkt || (pkt->hdr.flags & IWX_CMD_FAILED_MSK)) {
-		IWX_DPRINTF(sc, IWX_DEBUG_CMD, "SCD_QUEUE_CFG command failed\n");
-		err = EIO;
-		goto out;
+	if (!iwx_nic_lock(sc)) {
+		device_printf(sc->sc_dev, "%s: cannot enable txq %d\n",
+				__func__, qid);
+		return EBUSY;
 	}
 
-	resp_len = iwx_rx_packet_payload_len(pkt);
-	if (resp_len != sizeof(*resp)) {
-		IWX_DPRINTF(sc, IWX_DEBUG_CMD, "SCD_QUEUE_CFG returned %zu bytes, expected %zu bytes\n", resp_len, sizeof(*resp));
-		err = EIO;
-		goto out;
-	}
+	IWX_WRITE(sc, IWX_HBUS_TARG_WRPTR, qid << 8 | 0);
+	
+	if (qid == IWX_CMD_QUEUE) {
+		/* Disable the scheduler. */
+		iwx_write_prph(sc, IWX_SCD_EN_CTRL, 0);
 
-	resp = (void *)pkt->data;
-	fwqid = le16toh(resp->queue_number);
-	wr_idx = le16toh(resp->write_pointer);
+		/* Stop the TX queue prior to configuration. */
+		iwx_write_prph(sc, IWX_SCD_QUEUE_STATUS_BITS(qid),
+		    (0 << IWX_SCD_QUEUE_STTS_REG_POS_ACTIVE) |
+		    (1 << IWX_SCD_QUEUE_STTS_REG_POS_SCD_ACT_EN));
 
-	/* Unlike iwlwifi, we do not support dynamic queue ID assignment. */
-	if (fwqid != qid) {
-		IWX_DPRINTF(sc, IWX_DEBUG_CMD, "requested qid %d but %d was assigned\n", qid, fwqid);
-		err = EIO;
-		goto out;
-	}
+		iwx_nic_unlock(sc);
 
-	if (wr_idx != ring->cur) {
-		IWX_DPRINTF(sc, IWX_DEBUG_CMD, "fw write index is %d but ring is %d\n", wr_idx, ring->cur);
-		err = EIO;
-		goto out;
-	}
-out:
-	iwx_free_resp(sc, &hcmd);
-	return err;
+		/* Disable aggregations for this queue. */
+		iwx_clear_bits_prph(sc, IWX_SCD_AGGR_SEL, qmsk);
+
+		if (!iwx_nic_lock(sc)) {
+			device_printf(sc->sc_dev,
+			    "%s: cannot enable txq %d\n", __func__, qid);
+			return EBUSY;
+		}
+		iwx_write_prph(sc, IWX_SCD_QUEUE_RDPTR(qid), 0);
+		iwx_nic_unlock(sc);
+
+		iwx_write_mem32(sc,
+		    sc->scd_base_addr + IWX_SCD_CONTEXT_QUEUE_OFFSET(qid), 0);
+		/* Set scheduler window size and frame limit. */
+		iwx_write_mem32(sc,
+		    sc->scd_base_addr + IWX_SCD_CONTEXT_QUEUE_OFFSET(qid) +
+		    sizeof(uint32_t),
+		    ((IWX_FRAME_LIMIT << IWX_SCD_QUEUE_CTX_REG2_WIN_SIZE_POS) &
+		    IWX_SCD_QUEUE_CTX_REG2_WIN_SIZE_MSK) |
+		    ((IWX_FRAME_LIMIT << IWX_SCD_QUEUE_CTX_REG2_FRAME_LIMIT_POS) &
+		    IWX_SCD_QUEUE_CTX_REG2_FRAME_LIMIT_MSK));
+
+		if (!iwx_nic_lock(sc)) {
+			device_printf(sc->sc_dev,
+			    "%s: cannot enable txq %d\n", __func__, qid);
+			return EBUSY;
+		}
+#ifdef tbd
+	/* todo: openbsd drops the 'fifo' parameter */
+		iwx_write_prph(sc, IWX_SCD_QUEUE_STATUS_BITS(qid),
+		    (1 << IWX_SCD_QUEUE_STTS_REG_POS_ACTIVE) |
+		    (fifo << IWX_SCD_QUEUE_STTS_REG_POS_TXF) |
+		    (1 << IWX_SCD_QUEUE_STTS_REG_POS_WSL) |
+		    IWX_SCD_QUEUE_STTS_REG_MSK);
+#endif
+
+		/* Enable the scheduler for this queue. */
+		iwx_write_prph(sc, IWX_SCD_EN_CTRL, qmsk);
+	} else {
+		/* this comes from OpenBSD */
+		struct iwx_tx_queue_cfg_cmd cmd;
+		struct iwx_rx_packet *pkt;
+		struct iwx_tx_queue_cfg_rsp *resp;
+		struct iwx_host_cmd hcmd = {
+			.id = IWX_SCD_QUEUE_CFG,
+			.flags = IWX_CMD_WANT_SKB,
+	//		.resp_pkt_len = sizeof(*pkt) + sizeof(*resp),
+		};
+		struct iwx_tx_ring *ring = &sc->txq[qid];
+		int err, fwqid;
+		uint32_t wr_idx;
+		size_t resp_len;
+	
+		iwx_reset_tx_ring(sc, ring);
+	
+		memset(&cmd, 0, sizeof(cmd));
+		cmd.sta_id = sta_id;
+		cmd.tid = tid;
+		cmd.flags = htole16(IWX_TX_QUEUE_CFG_ENABLE_QUEUE);
+		cmd.cb_size = htole32(IWX_TFD_QUEUE_CB_SIZE(num_slots));
+		cmd.byte_cnt_addr = htole64(ring->bc_tbl.paddr);
+		cmd.tfdq_addr = htole64(ring->desc_dma.paddr);
+	
+		hcmd.data[0] = &cmd;
+		hcmd.len[0] = sizeof(cmd);
+	
+		err = iwx_send_cmd(sc, &hcmd);
+		if (err)
+			return err;
+	
+		pkt = hcmd.resp_pkt;
+		if (!pkt || (pkt->hdr.flags & IWX_CMD_FAILED_MSK)) {
+			IWX_DPRINTF(sc, IWX_DEBUG_CMD, "SCD_QUEUE_CFG command failed\n");
+			err = EIO;
+//			goto out;
+			return err;
+		}
+	
+		resp_len = iwx_rx_packet_payload_len(pkt);
+		if (resp_len != sizeof(*resp)) {
+			IWX_DPRINTF(sc, IWX_DEBUG_CMD, "SCD_QUEUE_CFG returned %zu bytes, expected %zu bytes\n", resp_len, sizeof(*resp));
+			err = EIO;
+//			goto out;
+			return err;
+		}
+	
+		resp = (void *)pkt->data;
+		fwqid = le16toh(resp->queue_number);
+		wr_idx = le16toh(resp->write_pointer);
+	
+		/* Unlike iwlwifi, we do not support dynamic queue ID assignment. */
+		if (fwqid != qid) {
+			IWX_DPRINTF(sc, IWX_DEBUG_CMD, "requested qid %d but %d was assigned\n", qid, fwqid);
+			err = EIO;
+//			goto out;
+			return err;
+		}
+	
+		if (wr_idx != ring->cur) {
+			IWX_DPRINTF(sc, IWX_DEBUG_CMD, "fw write index is %d but ring is %d\n", wr_idx, ring->cur);
+			err = EIO;
+//			goto out;
+			iwx_free_resp(sc, &hcmd);
+			return err;
+		}
+	} // else
+//out:
+//	iwx_free_resp(sc, &hcmd);
+//	} // else
+
+	iwx_nic_unlock(sc);
+
+//	IWX_DPRINTF(sc, IWX_DEBUG_XMIT, "%s: enabled txq %d FIFO %d\n",
+//			__func__, qid, fifo);
+
+	return 0;
 }
 
 #if 0
