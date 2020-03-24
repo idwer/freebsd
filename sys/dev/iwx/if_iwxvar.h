@@ -501,7 +501,6 @@ struct iwx_softc {
 	int			sc_hw_rev;
 	int			sc_hw_id;
 
-//	struct iwx_dma_info	kw_dma;
 	struct iwx_dma_info	fw_dma;
 
 	struct iwx_dma_info	ctxt_info_dma;
