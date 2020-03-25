@@ -817,6 +817,7 @@ iwx_read_firmware(struct iwx_softc *sc)
 	 * fw_fp will be set.
 	 */
 	fwp = firmware_get(sc->cfg->fw_name);
+	device_printf(sc->sc_dev, "%s: fwp=%p\n", __func__, fwp);
 	if (fwp == NULL) {
 		device_printf(sc->sc_dev,
 		    "could not read firmware %s (error %d)\n",
@@ -838,6 +839,7 @@ iwx_read_firmware(struct iwx_softc *sc)
 	 */
 
 	uhdr = (const void *)fw->fw_fp->data;
+	device_printf(sc->sc_dev, "%s: uhdr=%zu\n", __func__, sizeof(uhdr));
 	if (*(const uint32_t *)fw->fw_fp->data != 0
 	    || le32toh(uhdr->magic) != IWX_TLV_UCODE_MAGIC) {
 		device_printf(sc->sc_dev, "invalid firmware %s\n",
@@ -861,7 +863,8 @@ iwx_read_firmware(struct iwx_softc *sc)
 		tlv_type = le32toh(tlv->type);
 		tlv_data = tlv->data;
 
-		if (len < tlv_len) {
+//		if (len < tlv_len) {
+		if (len < roundup2(tlv_len, 4)) {
 			device_printf(sc->sc_dev,
 			    "firmware too short: %zu bytes\n",
 			    len);
@@ -871,6 +874,13 @@ iwx_read_firmware(struct iwx_softc *sc)
 		len -= roundup2(tlv_len, 4);
 		data += sizeof(*tlv) + roundup2(tlv_len, 4);
 
+		device_printf(sc->sc_dev, "%s: %s %#0jx %#0jx %#0jx %#0zx %p %p %#0x %#0x %p\n",
+				__func__,
+				sc->sc_fwver,
+				(uintmax_t)(const void *)fwp->data,
+				((uintmax_t)(const void *)fwp->data + fwp->datasize),
+				(uintmax_t)fwp->datasize,
+				len, data, tlv, tlv_len, tlv_type, tlv_data); /* todo if_iwx: remove before submitting for review */
 		switch ((int)tlv_type) {
 		case IWX_UCODE_TLV_PROBE_MAX_LEN:
 			if (tlv_len != sizeof(uint32_t)) {
