@@ -2595,56 +2595,36 @@ iwx_parse_nvm_sections(struct iwx_softc *sc, struct iwx_nvm_section *sections)
 {
 	const uint16_t *hw, *sw, *calib, *regulatory, *mac_override, *phy_sku;
 
-#if 0
 	/* todo if_iwx: tune to match/support family 22000 */
 	/* Checking for required sections */
-	if (sc->cfg->device_family == IWM_DEVICE_FAMILY_7000) {
-		if (!sections[IWM_NVM_SECTION_TYPE_SW].data ||
-		    !sections[sc->cfg->nvm_hw_section_num].data) {
-			device_printf(sc->sc_dev,
-			    "Can't parse empty OTP/NVM sections\n");
-			return NULL;
-		}
-	} else
-		if (sc->cfg->device_family >= IWM_DEVICE_FAMILY_8000) {
-		/* SW and REGULATORY sections are mandatory */
-		if (!sections[IWM_NVM_SECTION_TYPE_SW].data ||
-		    !sections[IWM_NVM_SECTION_TYPE_REGULATORY].data) {
-			device_printf(sc->sc_dev,
-			    "Can't parse empty OTP/NVM sections\n");
-			return NULL;
-		}
-		/* MAC_OVERRIDE or at least HW section must exist */
-		if (!sections[sc->cfg->nvm_hw_section_num].data &&
-		    !sections[IWM_NVM_SECTION_TYPE_MAC_OVERRIDE].data) {
-			device_printf(sc->sc_dev,
-			    "Can't parse mac_address, empty sections\n");
-			return NULL;
-		}
-
-		/* PHY_SKU section is mandatory in B0 */
-		if (!sections[IWM_NVM_SECTION_TYPE_PHY_SKU].data) {
-			device_printf(sc->sc_dev,
-			    "Can't parse phy_sku in B0, empty sections\n");
-			return NULL;
-		}
-	} else {
-		panic("unknown device family %d\n", sc->cfg->device_family);
+	/* SW and REGULATORY sections are mandatory */
+	if (!sections[IWX_NVM_SECTION_TYPE_SW].data ||
+	    !sections[IWX_NVM_SECTION_TYPE_REGULATORY].data) {
+		device_printf(sc->sc_dev,
+		    "Can't parse empty OTP/NVM sections\n");
+		return NULL;
 	}
-#endif
+	/* MAC_OVERRIDE or at least HW section must exist */
+	if (!sections[sc->cfg->nvm_hw_section_num].data &&
+	    !sections[IWX_NVM_SECTION_TYPE_MAC_OVERRIDE].data) {
+		device_printf(sc->sc_dev,
+		    "Can't parse mac_address, empty sections\n");
+		return NULL;
+	}
+
+	/* PHY_SKU section is mandatory in B0 */
+	if (!sections[IWX_NVM_SECTION_TYPE_PHY_SKU].data) {
+		device_printf(sc->sc_dev,
+		    "Can't parse phy_sku in B0, empty sections\n");
+		return NULL;
+	}
 
 	hw = (const uint16_t *) sections[sc->cfg->nvm_hw_section_num].data;
 	sw = (const uint16_t *)sections[IWX_NVM_SECTION_TYPE_SW].data;
 	calib = (const uint16_t *)
 	    sections[IWX_NVM_SECTION_TYPE_CALIBRATION].data;
-#if 0
-	regulatory = sc->cfg->nvm_type == IWX_NVM_SDP ?
-	    (const uint16_t *)sections[IWX_NVM_SECTION_TYPE_REGULATORY_SDP].data :
-	    (const uint16_t *)sections[IWX_NVM_SECTION_TYPE_REGULATORY].data;
-#endif
 	regulatory =
 	    (const uint16_t *)sections[IWX_NVM_SECTION_TYPE_REGULATORY].data;
-
 	mac_override = (const uint16_t *)
 	    sections[IWX_NVM_SECTION_TYPE_MAC_OVERRIDE].data;
 	phy_sku = (const uint16_t *)sections[IWX_NVM_SECTION_TYPE_PHY_SKU].data;
