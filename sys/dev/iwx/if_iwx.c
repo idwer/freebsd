@@ -533,7 +533,7 @@ int	iwx_enable_txq(struct iwx_softc *, int, int, int, int);
 //int	iwx_send_tx_ant_cfg(struct iwx_softc *, uint8_t);
 //int	iwx_send_phy_cfg_cmd(struct iwx_softc *);
 //int	iwx_load_ucode_wait_alive(struct iwx_softc *);
-//int	iwx_send_dqa_cmd(struct iwx_softc *);
+int	iwx_send_dqa_cmd(struct iwx_softc *);
 //int	iwx_run_init_mvm_ucode(struct iwx_softc *, int);
 //int	iwx_config_ltr(struct iwx_softc *);
 void	iwx_update_rx_desc(struct iwx_softc *, struct iwx_rx_ring *, int);
@@ -2520,17 +2520,9 @@ iwx_parse_nvm_data(struct iwx_softc *sc,
 	uint32_t sku, radio_cfg;
 //	uint16_t lar_config;
 
-#ifdef not_in_iwx
-	if (sc->cfg->device_family < IWM_DEVICE_FAMILY_8000) {
-		data = malloc(sizeof(*data) +
-		    IWM_NUM_CHANNELS * sizeof(uint16_t),
-		    M_DEVBUF, M_NOWAIT | M_ZERO);
-	} else {
-#endif
-		data = malloc(sizeof(*data) +
-		    IWX_NUM_CHANNELS * sizeof(uint16_t),
-		    M_DEVBUF, M_NOWAIT | M_ZERO);
-//	}
+	data = malloc(sizeof(*data) +
+	    IWX_NUM_CHANNELS * sizeof(uint16_t),
+	    M_DEVBUF, M_NOWAIT | M_ZERO);
 	if (!data)
 		return NULL;
 
@@ -3046,6 +3038,18 @@ iwx_send_phy_cfg_cmd(struct iwx_softc *sc)
 	    sizeof(phy_cfg_cmd), &phy_cfg_cmd);
 }
 
+int
+iwx_send_dqa_cmd(struct iwx_softc *sc)
+{
+	struct iwx_dqa_enable_cmd dqa_cmd = {
+		.cmd_queue = htole32(IWX_DQA_CMD_QUEUE),
+	};
+	uint32_t cmd_id;
+
+	cmd_id = iwx_cmd_id(IWX_DQA_ENABLE_CMD, IWX_DATA_PATH_GROUP, 0);
+	return iwx_send_cmd_pdu(sc, cmd_id, 0, sizeof(dqa_cmd), &dqa_cmd);
+}
+
 static int
 iwx_alive_fn(struct iwx_softc *sc, struct iwx_rx_packet *pkt, void *data)
 {
@@ -3284,16 +3288,14 @@ iwx_config_ltr(struct iwx_softc *sc)
 void
 iwx_update_rx_desc(struct iwx_softc *sc, struct iwx_rx_ring *ring, int idx)
 {
-#if 0
 	// silence the compiler: build error for struct bus_dmamap_t
-	struct iwx_rx_data *data = &ring->data[idx];
+//	struct iwx_rx_data *data = &ring->data[idx];
 
-	((uint64_t *)ring->desc)[idx] =
-	    htole64(data->map->dm_segs[0].ds_addr | (idx & 0x0fff));
+//	((uint64_t *)ring->desc)[idx] =
+//	    htole64(data->map->dm_segs[0].ds_addr | (idx & 0x0fff));
 	bus_dmamap_sync(sc->sc_dmat, ring->free_desc_dma.map,
-	    idx * sizeof(uint64_t), sizeof(uint64_t),
+//	    idx * sizeof(uint64_t), sizeof(uint64_t),
 	    BUS_DMASYNC_PREWRITE);
-#endif
 }
 
 /* (re)stock rx ring, called at init-time and at runtime */
@@ -5041,18 +5043,24 @@ iwx_init_hw(struct iwx_softc *sc)
 		goto error;
 	}
 
+#ifdef not_in_iwx
 	/* Send phy db control command and then phy db calibration */
 	if ((error = iwx_send_phy_db_data(sc->sc_phy_db)) != 0)
 		goto error;
+#endif
 
-//#ifdef not_in_iwx
-	if ((error = iwx_send_phy_cfg_cmd(sc)) != 0) {
-		device_printf(sc->sc_dev, "phy_cfg_cmd failed\n");
-		goto error;
+	if (sc->sc_tx_with_siso_diversity) {
+		if ((error = iwx_send_phy_cfg_cmd(sc)) != 0) {
+			device_printf(sc->sc_dev, "phy_cfg_cmd failed\n");
+			goto error;
+		}
 	}
-//#endif
 
 	/* todo if_iwx: openbsd calls iwx_send_dqa_cmd(sc) at this point */
+	if ((error = iwx_send_dqa_cmd(sc)) != 0) {
+		device_printf(sc->sc_dev, "%s failed", __func__);
+		goto error;
+	}
 
 	/* Add auxiliary station for scanning */
 	if ((error = iwx_add_aux_sta(sc)) != 0) {

@@ -1855,7 +1855,7 @@ enum {
 	IWX_SYSTEM_GROUP = 0x2,
 	IWM_MAC_CONF_GROUP = 0x3,
 	IWX_PHY_OPS_GROUP = 0x4,
-	IWM_DATA_PATH_GROUP = 0x5,
+	IWX_DATA_PATH_GROUP = 0x5,
 	IWM_PROT_OFFLOAD_GROUP = 0xb,
 	IWX_REGULATORY_AND_NVM_GROUP = 0xc,
 };
@@ -1869,12 +1869,20 @@ enum {
 };
 
 /* DATA_PATH group subcommand IDs */
-// #define IWX_DQA_ENABLE_CMD	0x00
+#define IWX_DQA_ENABLE_CMD	0x00
 #define IWX_RX_NO_DATA_NOTIF	0xf5
 
 /* REGULATORY_AND_NVM group subcommand IDs */
 #define IWX_NVM_ACCESS_COMPLETE	0x00
 #define IWX_NVM_GET_INFO	0x02
+
+/*
+ * struct iwx_dqa_enable_cmd
+ * @cmd_queue: the TXQ number of the command queue
+ */
+struct iwx_dqa_enable_cmd {
+	uint32_t cmd_queue;
+} __packed; /* DQA_CONTROL_CMD_API_S_VER_1 */
 
 /**
  * struct iwm_cmd_response - generic response struct for most commands
