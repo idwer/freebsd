@@ -436,7 +436,6 @@ iwx_ctxt_info_init(struct iwx_softc *sc, const struct iwx_fw_img *fws)
 	ctxt_info->version.size = htole16(sizeof(*ctxt_info) / 4);
 
 	if (sc->cfg->device_family >= IWX_DEVICE_FAMILY_22560)
-
 		rb_size = IWX_CTXT_INFO_RB_SIZE_2K;
 	else
 		rb_size = IWX_CTXT_INFO_RB_SIZE_4K;
