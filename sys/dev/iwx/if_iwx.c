@@ -5823,6 +5823,7 @@ iwx_handle_rxb(struct iwx_softc *sc, struct mbuf *m)
 		case IWX_MCAST_FILTER_CMD:
 			break;
 
+#ifdef not_in_iwx
 		case IWX_SCD_QUEUE_CFG: {
 			struct iwx_scd_txq_cfg_rsp *rsp;
 			rsp = (void *)pkt->data;
@@ -5834,6 +5835,19 @@ iwx_handle_rxb(struct iwx_softc *sc, struct mbuf *m)
 			    rsp->scd_queue);
 			break;
 		}
+#endif
+		case IWX_WIDE_ID(IWX_DATA_PATH_GROUP, IWX_DQA_ENABLE_CMD):
+			break;
+
+		case IWX_WIDE_ID(IWX_SYSTEM_GROUP, IWX_INIT_EXTENDED_CFG_CMD):
+			break;
+
+		case IWX_WIDE_ID(IWX_REGULATORY_AND_NVM_GROUP,
+			IWX_NVM_ACCESS_COMPLETE):
+			break;
+
+		case IWX_WIDE_ID(IWX_DATA_PATH_GROUP, IWX_RX_NO_DATA_NOTIF):
+			break;
 
 		default:
 			device_printf(sc->sc_dev,
@@ -5942,6 +5956,7 @@ iwx_intr(void *arg)
 		/*
 		 * ok, there was something.  keep plowing until we have all.
 		 */
+		device_printf(sc->sc_dev, "%s: we be plowin'\n", __func__);
 		r1 = r2 = 0;
 		while (tmp) {
 			r1 |= tmp;
@@ -5961,8 +5976,10 @@ iwx_intr(void *arg)
 	} else {
 		r1 = IWX_READ(sc, IWX_CSR_INT);
 		/* "hardware gone" (where, fishing?) */
-		if (r1 == 0xffffffff || (r1 & 0xfffffff0) == 0xa5a5a5a0)
+		if (r1 == 0xffffffff || (r1 & 0xfffffff0) == 0xa5a5a5a0) {
+			device_printf(sc->sc_dev, "%s: r1 could be 0xa5a5a5a0...: r1=0x%x\n", __func__, r1);
 			goto out;
+		}
 		r2 = IWX_READ(sc, IWX_CSR_FH_INT_STATUS);
 	}
 	if (r1 == 0 && r2 == 0) {
@@ -6260,6 +6277,7 @@ iwx_attach(device_t dev)
 	
 	iwx_enable_interrupts(sc);
 
+	device_printf(sc->sc_dev, "%s: [1] sc_hw_rev=0x%x\n", __func__, sc->sc_hw_rev);
 	sc->sc_hw_rev = IWX_READ(sc, IWX_CSR_HW_REV);
 	/*
 	 * In the 8000 HW family the format of the 4 bytes of CSR_HW_REV have
@@ -6268,8 +6286,10 @@ iwx_attach(device_t dev)
 	 * in the old format.
 	 */
 
+	device_printf(sc->sc_dev, "%s: [2] sc_hw_rev=0x%x\n", __func__, sc->sc_hw_rev);
 	sc->sc_hw_rev = (sc->sc_hw_rev & 0xfff0) |
 			(IWX_CSR_HW_REV_STEP(sc->sc_hw_rev << 2) << 2);
+	device_printf(sc->sc_dev, "%s: [3] sc_hw_rev=0x%x\n", __func__, sc->sc_hw_rev);
 
 	if (iwx_prepare_card_hw(sc) != 0) {
 		device_printf(dev, "could not initialize hardware\n");
@@ -6300,6 +6320,8 @@ iwx_attach(device_t dev)
 		iwx_write_prph(sc, IWX_WFPM_CTRL_REG, hw_step);
 		hw_step = iwx_read_prph(sc, IWX_AUX_MISC_REG);
 		hw_step = (hw_step >> IWX_HW_STEP_LOCATION_BITS) & 0xF;
+		device_printf(sc->sc_dev, "%s: [4] hw_step=0x%x\n",
+				__func__,hw_step);
 		if (hw_step == 0x3)
 			sc->sc_hw_rev = (sc->sc_hw_rev & 0xFFFFFFF3) |
 					(IWX_SILICON_C_STEP << 2);
