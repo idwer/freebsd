@@ -99,4 +99,5 @@ const struct iwx_cfg iwx22000_cfg = {
 #ifdef not_in_iwx
 	//	.mqrx_supported = 1,
 #endif
+//	.sc_tx_with_siso_diversity = 0,
 };

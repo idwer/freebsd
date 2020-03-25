@@ -605,6 +605,8 @@ struct iwx_softc {
 
 	int			sc_ltr_enabled;
 
+	int			sc_tx_with_siso_diversity;
+
 	/* Track firmware state for STA association. */
 	int			sc_firmware_state;
 
