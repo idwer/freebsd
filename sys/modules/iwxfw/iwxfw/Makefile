@@ -1,6 +1,6 @@
 # $FreeBSD$
 
-KMOD=	iwx22000fw
-IMG=	iwx-22000-48
+KMOD=	iwxfw
+IMG=	iwlwifi-cc-a0-46
 
 .include <bsd.kmod.mk>
