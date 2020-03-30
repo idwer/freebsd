@@ -309,32 +309,32 @@ static void	iwx_set_radio_cfg(const struct iwx_softc *,
 static struct iwx_nvm_data *
 	iwx_parse_nvm_sections(struct iwx_softc *, struct iwx_nvm_section *);
 static int	iwx_nvm_init(struct iwx_softc *);
-#ifdef tbd
+//#ifdef tbd
 static int	iwx_pcie_load_section(struct iwx_softc *, uint8_t,
 				      const struct iwx_fw_desc *);
-#endif
-#ifdef tbd
+//#endif
+//#ifdef tbd
 static int	iwx_pcie_load_firmware_chunk(struct iwx_softc *, uint32_t,
 					     bus_addr_t, uint32_t);
-#endif
+//#endif
 #if 0 // see TODO iwx
 // static int	iwx_pcie_load_cpu_sections_8000(struct iwx_softc *sc,
 						const struct iwx_fw_img *,
 						int, int *);
 #endif
-#ifdef tbd
+//#ifdef tbd
 static int	iwx_pcie_load_cpu_sections(struct iwx_softc *,
 					   const struct iwx_fw_img *,
 					   int, int *);
-#endif
+//#endif
 #if 0 // see TODO iwx
 // static int	iwx_pcie_load_given_ucode_8000(struct iwx_softc *,
 					       const struct iwx_fw_img *);
 #endif
-#ifdef tbd
-					       static int	iwx_pcie_load_given_ucode(struct iwx_softc *,
+//#ifdef tbd
+static int	iwx_pcie_load_given_ucode(struct iwx_softc *,
 					  const struct iwx_fw_img *);
-#endif
+//#endif
 static int	iwx_start_fw(struct iwx_softc *, const struct iwx_fw_img *);
 static int	iwx_send_tx_ant_cfg(struct iwx_softc *, uint8_t);
 static int	iwx_send_phy_cfg_cmd(struct iwx_softc *);
@@ -2689,7 +2689,7 @@ iwx_nvm_init(struct iwx_softc *sc)
 	return 0;
 }
 
-#ifdef not_in_iwx
+//#ifdef not_in_iwx
 // iwm_firmware_load_sect() in openbsd
 static int
 iwx_pcie_load_section(struct iwx_softc *sc, uint8_t section_num,
@@ -2743,12 +2743,12 @@ iwx_pcie_load_section(struct iwx_softc *sc, uint8_t section_num,
 
 	return ret;
 }
-#endif
+//#endif
 
 /*
  * ucode
  */
-#ifdef not_in_iwx
+//#ifdef not_in_iwx
 static int
 /* iwm_firmware_load_chunk() in openbsd */
 iwx_pcie_load_firmware_chunk(struct iwx_softc *sc, uint32_t dst_addr,
@@ -2795,9 +2795,9 @@ iwx_pcie_load_firmware_chunk(struct iwx_softc *sc, uint32_t dst_addr,
 	}
 	return 0;
 }
-#endif
+//#endif
 
-#ifdef not_in_iwx
+//#ifdef not_in_iwx
 /* assume this is identical to iwx_get_num_sections() in OpenBSD */
 static int
 iwx_pcie_load_cpu_sections(struct iwx_softc *sc,
@@ -2842,9 +2842,9 @@ iwx_pcie_load_cpu_sections(struct iwx_softc *sc,
 
 	return 0;
 }
-#endif
+//#endif
 
-#ifdef not_in_iwx
+//#ifdef not_in_iwx
 static int
 iwx_pcie_load_given_ucode(struct iwx_softc *sc, const struct iwx_fw_img *image)
 {
@@ -2889,7 +2889,7 @@ iwx_pcie_load_given_ucode(struct iwx_softc *sc, const struct iwx_fw_img *image)
 
 	return 0;
 }
-#endif
+//#endif
 
 /* XXX Get rid of this definition */
 static inline void
@@ -2988,9 +2988,9 @@ iwx_start_fw(struct iwx_softc *sc, const struct iwx_fw_img *fw)
 	 */
 	iwx_enable_fw_load_int(sc);
 
-#ifdef not_in_iwx
+//#ifdef not_in_iwx
 	ret = iwx_pcie_load_given_ucode(sc, fw);
-#endif
+//#endif
 
 	/* XXX re-check RF-Kill state */
 
@@ -3162,6 +3162,8 @@ iwx_load_ucode_wait_alive(struct iwx_softc *sc)
 	IWX_LOCK(sc);
 	if (error) {
 //		sc->cur_ucode = old_type;
+		device_printf(sc->sc_dev, "%s: [1] error=%d\n",
+				__func__, error);
 		return error;
 	}
 
@@ -3177,6 +3179,9 @@ iwx_load_ucode_wait_alive(struct iwx_softc *sc)
 	if (!error)
 		/* how does openbsd signal this? */
 		sc->ucode_loaded = TRUE;
+
+	device_printf(sc->sc_dev, "%s: [2] error=%d\n",
+			__func__, error);
 	return error;
 //	return 0;
 }
