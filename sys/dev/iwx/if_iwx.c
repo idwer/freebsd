@@ -2544,6 +2544,8 @@ iwx_nvm_init(struct iwx_softc *sc)
 /*
  * ucode
  */
+
+/* XXX Add proper rfkill support code */
 static int
 iwx_start_fw(struct iwx_softc *sc, const struct iwx_fw_img *fw)
 {
@@ -2575,6 +2577,8 @@ iwx_start_fw(struct iwx_softc *sc, const struct iwx_fw_img *fw)
 		goto out;
 	}
 
+	/* todo: add support for AX210,
+	 * see iwl_trans_pcie_gen2_start_fw() */
 	ret = iwx_ctxt_info_init(sc, fw);
 
 	/* XXX re-check RF-Kill state */
