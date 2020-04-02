@@ -172,13 +172,6 @@ __FBSDID("$FreeBSD$");
 #include <dev/iwx/if_iwx_pcie_trans.h>
 #include <dev/iwx/if_iwx_fw.h>
 
-/* TODO iwx (ax200):
- * it's probably saner to merge iwx_pcie_load_given_ucode()
- * with iwx_pcie_load_given_ucode_8000(), and drop the latter
- *
- * * it's probably saner to merge iwx_pcie_load_cpu_sections()
- * with iwx_pcie_load_cpu_sections_8000(), and drop the latter */
-
 /* From DragonflyBSD */
 #define mtodoff(m, t, off)      ((t)((m)->m_data + (off)))
 
@@ -308,32 +301,6 @@ static void	iwx_set_radio_cfg(const struct iwx_softc *,
 static struct iwx_nvm_data *
 	iwx_parse_nvm_sections(struct iwx_softc *, struct iwx_nvm_section *);
 static int	iwx_nvm_init(struct iwx_softc *);
-//#ifdef tbd
-static int	iwx_pcie_load_section(struct iwx_softc *, uint8_t,
-				      const struct iwx_fw_desc *);
-//#endif
-//#ifdef tbd
-static int	iwx_pcie_load_firmware_chunk(struct iwx_softc *, uint32_t,
-					     bus_addr_t, uint32_t);
-//#endif
-#if 0 // see TODO iwx
-// static int	iwx_pcie_load_cpu_sections_8000(struct iwx_softc *sc,
-						const struct iwx_fw_img *,
-						int, int *);
-#endif
-//#ifdef tbd
-static int	iwx_pcie_load_cpu_sections(struct iwx_softc *,
-					   const struct iwx_fw_img *,
-					   int, int *);
-//#endif
-#if 0 // see TODO iwx
-// static int	iwx_pcie_load_given_ucode_8000(struct iwx_softc *,
-					       const struct iwx_fw_img *);
-#endif
-//#ifdef tbd
-static int	iwx_pcie_load_given_ucode(struct iwx_softc *,
-					  const struct iwx_fw_img *);
-//#endif
 static int	iwx_start_fw(struct iwx_softc *, const struct iwx_fw_img *);
 static int	iwx_send_tx_ant_cfg(struct iwx_softc *, uint8_t);
 static int	iwx_send_phy_cfg_cmd(struct iwx_softc *);
@@ -2366,10 +2333,6 @@ iwx_get_n_hw_addrs(const struct iwx_softc *sc, const uint16_t *nvm_sw)
 {
 	int n_hw_addr;
 
-#ifdef not_in_iwx
-	if (sc->cfg->device_family < IWM_DEVICE_FAMILY_8000)
-		return le16_to_cpup(nvm_sw + IWM_N_HW_ADDRS);
-#endif
 	/* todo if_iwx: tune to match/support family 22000 */
 	// n_hw_addr = le32_to_cpup((const uint32_t *)(nvm_sw + IWX_N_HW_ADDRS_8000));
 	n_hw_addr = le32_to_cpup((const uint32_t *)(nvm_sw + IWX_N_HW_ADDRS));
@@ -2380,15 +2343,6 @@ static void
 iwx_set_radio_cfg(const struct iwx_softc *sc, struct iwx_nvm_data *data,
 		  uint32_t radio_cfg)
 {
-#ifdef not_in_iwx
-	if (sc->cfg->device_family < IWM_DEVICE_FAMILY_8000) {
-		data->radio_cfg_type = IWM_NVM_RF_CFG_TYPE_MSK(radio_cfg);
-		data->radio_cfg_step = IWM_NVM_RF_CFG_STEP_MSK(radio_cfg);
-		data->radio_cfg_dash = IWM_NVM_RF_CFG_DASH_MSK(radio_cfg);
-		data->radio_cfg_pnum = IWM_NVM_RF_CFG_PNUM_MSK(radio_cfg);
-		return;
-	}
-#endif
 	/* todo if_iwx: tune to match/support family 22000 */
 	/* set the radio configuration for family 8000 */
 //	data->radio_cfg_type = IWX_NVM_RF_CFG_TYPE_MSK_8000(radio_cfg);
@@ -2413,19 +2367,6 @@ iwx_set_hw_address(struct iwx_softc *sc, struct iwx_nvm_data *data,
 	if (cfg->mac_addr_from_csr) {
 		iwm_set_hw_address_from_csr(sc, data);
 	} else
-#endif
-#ifdef not_in_iwx
-		if (sc->cfg->device_family < IWM_DEVICE_FAMILY_8000) {
-		const uint8_t *hw_addr = (const uint8_t *)(nvm_hw + IWM_HW_ADDR);
-
-		/* The byte order is little endian 16 bit, meaning 214365 */
-		data->hw_addr[0] = hw_addr[1];
-		data->hw_addr[1] = hw_addr[0];
-		data->hw_addr[2] = hw_addr[3];
-		data->hw_addr[3] = hw_addr[2];
-		data->hw_addr[4] = hw_addr[5];
-		data->hw_addr[5] = hw_addr[4];
-	} else {
 #endif
 		/* todo if_iwx: merge the function below into this function  */
 		iwx_set_hw_address_family_8000(sc, data, mac_override, nvm_hw);
@@ -2487,16 +2428,8 @@ iwx_parse_nvm_data(struct iwx_softc *sc,
 		return NULL;
 	}
 
-#ifdef not_in_iwx
-	if (sc->cfg->device_family == IWM_DEVICE_FAMILY_7000) {
-		memcpy(data->nvm_ch_flags, sc->cfg->nvm_type == IWM_NVM_SDP ?
-		    &regulatory[0] : &nvm_sw[IWM_NVM_CHANNELS],
-		    IWM_NUM_CHANNELS * sizeof(uint16_t));
-	} else {
-#endif
-		memcpy(data->nvm_ch_flags, &regulatory[IWX_NVM_CHANNELS],
-		    IWX_NUM_CHANNELS * sizeof(uint16_t));
-//	}
+	memcpy(data->nvm_ch_flags, &regulatory[IWX_NVM_CHANNELS],
+	    IWX_NUM_CHANNELS * sizeof(uint16_t));
 
 	return data;
 }
@@ -2608,265 +2541,9 @@ iwx_nvm_init(struct iwx_softc *sc)
 	return 0;
 }
 
-//#ifdef not_in_iwx
-// iwm_firmware_load_sect() in openbsd
-static int
-iwx_pcie_load_section(struct iwx_softc *sc, uint8_t section_num,
-	const struct iwx_fw_desc *section)
-{
-	struct iwx_dma_info *dma = &sc->fw_dma;
-	uint8_t *v_addr;
-	bus_addr_t p_addr;
-	uint32_t offset, chunk_sz = MIN(IWX_FH_MEM_TB_MAX_LENGTH, section->len);
-	int ret = 0;
-
-	IWX_DPRINTF(sc, IWX_DEBUG_RESET,
-		    "%s: [%d] uCode section being loaded...\n",
-		    __func__, section_num);
-
-	v_addr = dma->vaddr;
-	p_addr = dma->paddr;
-
-	for (offset = 0; offset < section->len; offset += chunk_sz) {
-		uint32_t copy_size, dst_addr;
-		int extended_addr = FALSE;
-
-		copy_size = MIN(chunk_sz, section->len - offset);
-		dst_addr = section->offset + offset;
-
-		if (dst_addr >= IWX_FW_MEM_EXTENDED_START &&
-		    dst_addr <= IWX_FW_MEM_EXTENDED_END)
-			extended_addr = TRUE;
-
-		if (extended_addr)
-			iwx_set_bits_prph(sc, IWX_LMPM_CHICK,
-					  IWX_LMPM_CHICK_EXTENDED_ADDR_SPACE);
-
-		memcpy(v_addr, (const uint8_t *)section->data + offset,
-		    copy_size);
-		bus_dmamap_sync(dma->tag, dma->map, BUS_DMASYNC_PREWRITE);
-		ret = iwx_pcie_load_firmware_chunk(sc, dst_addr, p_addr,
-						   copy_size);
-
-		if (extended_addr)
-			iwx_clear_bits_prph(sc, IWX_LMPM_CHICK,
-					    IWX_LMPM_CHICK_EXTENDED_ADDR_SPACE);
-
-		if (ret) {
-			device_printf(sc->sc_dev,
-			    "%s: Could not load the [%d] uCode section\n",
-			    __func__, section_num);
-			break;
-		}
-	}
-
-	return ret;
-}
-//#endif
-
 /*
  * ucode
  */
-//#ifdef not_in_iwx
-static int
-/* iwm_firmware_load_chunk() in openbsd */
-iwx_pcie_load_firmware_chunk(struct iwx_softc *sc, uint32_t dst_addr,
-			     bus_addr_t phy_addr, uint32_t byte_cnt)
-{
-	sc->sc_fw_chunk_done = 0;
-
-	if (!iwx_nic_lock(sc))
-		return EBUSY;
-
-	IWX_WRITE(sc, IWX_FH_TCSR_CHNL_TX_CONFIG_REG(IWX_FH_SRVC_CHNL),
-	    IWX_FH_TCSR_TX_CONFIG_REG_VAL_DMA_CHNL_PAUSE);
-
-	IWX_WRITE(sc, IWX_FH_SRVC_CHNL_SRAM_ADDR_REG(IWX_FH_SRVC_CHNL),
-	    dst_addr);
-
-	IWX_WRITE(sc, IWX_FH_TFDIB_CTRL0_REG(IWX_FH_SRVC_CHNL),
-	    phy_addr & IWX_FH_MEM_TFDIB_DRAM_ADDR_LSB_MSK);
-
-	IWX_WRITE(sc, IWX_FH_TFDIB_CTRL1_REG(IWX_FH_SRVC_CHNL),
-	    (iwx_get_dma_hi_addr(phy_addr)
-	     << IWX_FH_MEM_TFDIB_REG1_ADDR_BITSHIFT) | byte_cnt);
-
-	IWX_WRITE(sc, IWX_FH_TCSR_CHNL_TX_BUF_STS_REG(IWX_FH_SRVC_CHNL),
-	    1 << IWX_FH_TCSR_CHNL_TX_BUF_STS_REG_POS_TB_NUM |
-	    1 << IWX_FH_TCSR_CHNL_TX_BUF_STS_REG_POS_TB_IDX |
-	    IWX_FH_TCSR_CHNL_TX_BUF_STS_REG_VAL_TFDB_VALID);
-
-	IWX_WRITE(sc, IWX_FH_TCSR_CHNL_TX_CONFIG_REG(IWX_FH_SRVC_CHNL),
-	    IWX_FH_TCSR_TX_CONFIG_REG_VAL_DMA_CHNL_ENABLE    |
-	    IWX_FH_TCSR_TX_CONFIG_REG_VAL_DMA_CREDIT_DISABLE |
-	    IWX_FH_TCSR_TX_CONFIG_REG_VAL_CIRQ_HOST_ENDTFD);
-
-	iwx_nic_unlock(sc);
-
-	/* wait up to 5s for this segment to load */
-	msleep(&sc->sc_fw, &sc->sc_mtx, 0, "iwxfw", hz * 5);
-
-	if (!sc->sc_fw_chunk_done) {
-		device_printf(sc->sc_dev,
-		    "fw chunk addr 0x%x len %d failed to load\n",
-		    dst_addr, byte_cnt);
-		return ETIMEDOUT;
-	}
-	return 0;
-}
-//#endif
-
-//#ifdef not_in_iwx
-/* assume this is identical to iwx_get_num_sections() in OpenBSD */
-static int
-iwx_pcie_load_cpu_sections(struct iwx_softc *sc,
-	const struct iwx_fw_img *image, int cpu, int *first_ucode_section)
-{
-	int shift_param;
-	int i, ret = 0;
-	uint32_t last_read_idx = 0;
-
-	if (cpu == 1) {
-		shift_param = 0;
-		*first_ucode_section = 0;
-	} else {
-		shift_param = 16;
-		(*first_ucode_section)++;
-	}
-
-	for (i = *first_ucode_section; i < IWX_UCODE_SECTION_MAX; i++) {
-		last_read_idx = i;
-
-		/*
-		 * CPU1_CPU2_SEPARATOR_SECTION delimiter - separate between
-		 * CPU1 to CPU2.
-		 * PAGING_SEPARATOR_SECTION delimiter - separate between
-		 * CPU2 non paged to CPU2 paging sec.
-		 */
-		if (!image->fw_sect[i].data ||
-		    image->fw_sect[i].offset == IWX_CPU1_CPU2_SEPARATOR_SECTION ||
-		    image->fw_sect[i].offset == IWX_PAGING_SEPARATOR_SECTION) {
-			IWX_DPRINTF(sc, IWX_DEBUG_RESET,
-				    "Break since Data not valid or Empty section, sec = %d\n",
-				     i);
-			break;
-		}
-
-		ret = iwx_pcie_load_section(sc, i, &image->fw_sect[i]);
-		if (ret)
-			return ret;
-	}
-
-	*first_ucode_section = last_read_idx;
-
-	return 0;
-}
-//#endif
-
-//#ifdef not_in_iwx
-static int
-iwx_pcie_load_given_ucode(struct iwx_softc *sc, const struct iwx_fw_img *image)
-{
-	int ret = 0;
-//#ifdef not_in_iwx
-	int first_ucode_section;
-//#endif
-
-/* todo if_iwx: add code to do what openbsd does */
-#if 0
-	sc->sc_uc.uc_intr = 0;
-#endif
-
-	IWX_DPRINTF(sc, IWX_DEBUG_RESET, "working with %s CPU\n",
-		     image->is_dual_cpus ? "Dual" : "Single");
-
-	/* load to FW the binary non secured sections of CPU1 */
-	ret = iwx_pcie_load_cpu_sections(sc, image, 1, &first_ucode_section);
-	if (ret)
-		return ret;
-
-	if (image->is_dual_cpus) {
-		/* set CPU2 header address */
-		if (iwx_nic_lock(sc)) {
-			iwx_write_prph(sc,
-				       IWX_LMPM_SECURE_UCODE_LOAD_CPU2_HDR_ADDR,
-				       IWX_LMPM_SECURE_CPU2_HDR_MEM_SPACE);
-			iwx_nic_unlock(sc);
-		}
-
-		/* load to FW the binary sections of CPU2 */
-		ret = iwx_pcie_load_cpu_sections(sc, image, 2,
-						 &first_ucode_section);
-		if (ret)
-			return ret;
-	}
-
-	iwx_enable_interrupts(sc);
-
-	/* release CPU reset */
-	IWX_WRITE(sc, IWX_CSR_RESET, 0);
-
-	return 0;
-}
-//#endif
-
-/* XXX Get rid of this definition */
-static inline void
-iwx_enable_fw_load_int(struct iwx_softc *sc)
-{
-	IWX_DPRINTF(sc, IWX_DEBUG_INTR, "Enabling FW load interrupt\n");
-	/* ported from iwx_enable_fwload_interrupt() in openbsd,
-	 * where INT_BIT_FH_TX is changed to INT_BIT_FH_RX */
-	sc->sc_intmask = IWX_CSR_INT_BIT_ALIVE | IWX_CSR_INT_BIT_FH_RX;
-	IWX_WRITE(sc, IWX_CSR_INT_MASK, sc->sc_intmask);
-}
-
-#ifdef not_in_iwx
-static int
-iwx_load_firmware(struct iwx_softc *sc)
-{
-//	struct iwx_fw_sects *fws;
-	struct iwx_fw_img *fws;
-//	int err, w;
-	int err;
-
-#ifdef not_in_iwx
-	sc->sc_uc.uc_intr = 0;
-#endif
-	iwx_enable_fw_load_int(sc);
-
-//	fws = &sc->sc_fw.fw_sects[IWX_UCODE_REGULAR];
-	fws = &sc->sc_fw.img[IWX_UCODE_REGULAR];
-//	fws = &sc->sc_fw.img[IWX_UCODE_REGULAR].fw_sect[IWX_UCODE_REGULAR];
-	err = iwx_ctxt_info_init(sc, fws);
-	if (err) {
-		device_printf(sc->sc_dev, "could not init context info\n");
-		return err;
-	}
-
-	/* wait for the firmware to load */
-	/* todo if_iwx: apply proper timing code */
-#if tbd
-	for (w = 0; !sc->sc_uc.uc_intr && w < 10; w++) {
-		err = tsleep_nsec(&sc->sc_uc, 0, "iwxuc", MSEC_TO_NSEC(100));
-	}
-#endif
-#ifdef not_in_iwx
-	if (err || !sc->sc_uc.uc_ok)
-		device_printf(sc->sc_dev, "could not load firmware\n");
-	if (!sc->sc_uc.uc_ok)
-		return EINVAL;
-#endif
-	if (err)
-		device_printf(sc->sc_dev, "could not load firmware\n");
-
-	return err;
-//	return 0;
-}
-#endif
-
-/* XXX Add proper rfkill support code */
-
 static int
 iwx_start_fw(struct iwx_softc *sc, const struct iwx_fw_img *fw)
 {
@@ -2898,18 +2575,7 @@ iwx_start_fw(struct iwx_softc *sc, const struct iwx_fw_img *fw)
 		goto out;
 	}
 
-	/*
-	 * Now, we load the firmware and don't want to be interrupted, even
-	 * by the RF-Kill interrupt (hence mask all the interrupt besides the
-	 * FH_TX interrupt which is needed to load the firmware). If the
-	 * RF-Kill switch is toggled, we will find out after having loaded
-	 * the firmware and return the proper value to the caller.
-	 */
-	iwx_enable_fw_load_int(sc);
-
-//#ifdef not_in_iwx
-	ret = iwx_pcie_load_given_ucode(sc, fw);
-//#endif
+	ret = iwx_ctxt_info_init(sc, fw);
 
 	/* XXX re-check RF-Kill state */
 
@@ -6763,10 +6429,6 @@ iwx_detach_local(struct iwx_softc *sc, int do_net80211)
 	iwx_dma_contig_free(&sc->sched_dma);
 	iwx_dma_contig_free(&sc->ict_dma);
 	iwx_dma_contig_free(&sc->fw_dma);
-
-#ifdef not_in_iwx
-	iwx_free_fw_paging(sc);
-#endif
 
 	/* Finished with the hardware - detach things */
 	iwx_pci_detach(dev);
