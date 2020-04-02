@@ -275,7 +275,6 @@ static int	iwx_nic_rx_init(struct iwx_softc *);
 // static int	iwx_nic_tx_init(struct iwx_softc *);
 #endif
 static int	iwx_nic_init(struct iwx_softc *);
-//static int	iwx_trans_pcie_fw_alive(struct iwx_softc *, uint32_t);
 static void	iwx_trans_pcie_fw_alive(struct iwx_softc *, uint32_t);
 static int	iwx_nvm_read_chunk(struct iwx_softc *, uint16_t, uint16_t,
                                    uint16_t, uint8_t *, uint16_t *);
@@ -1913,91 +1912,9 @@ iwx_enable_txq(struct iwx_softc *sc, int sta_id, int qid, int tid,
 	return 0;
 }
 
-#if 0
-/* this is openbsd's implementation */
 static void
-iwx_trans_pcie_fw_alive(struct iwx_softc *sc)
-{
-	iwx_ict_reset(sc);
-	iwx_ctxt_info_free(sc);
-}
-#endif
-//#ifdef not_in_iwx
-static void
-//static int
 iwx_trans_pcie_fw_alive(struct iwx_softc *sc, uint32_t scd_base_addr)
 {
-#ifdef not_in_iwx
-	int error, chnl;
-
-	int clear_dwords = (IWX_SCD_TRANS_TBL_MEM_UPPER_BOUND -
-	    IWX_SCD_CONTEXT_MEM_LOWER_BOUND) / sizeof(uint32_t);
-
-	if (!iwx_nic_lock(sc))
-		return EBUSY;
-
-	iwx_ict_reset(sc);
-
-	sc->scd_base_addr = iwx_read_prph(sc, IWX_SCD_SRAM_BASE_ADDR);
-	if (scd_base_addr != 0 &&
-	    scd_base_addr != sc->scd_base_addr) {
-		device_printf(sc->sc_dev,
-		    "%s: sched addr mismatch: alive: 0x%x prph: 0x%x\n",
-		    __func__, sc->scd_base_addr, scd_base_addr);
-	}
-
-	iwx_nic_unlock(sc);
-
-	/* reset context data, TX status and translation data */
-	error = iwx_write_mem(sc,
-	    sc->scd_base_addr + IWX_SCD_CONTEXT_MEM_LOWER_BOUND,
-	    NULL, clear_dwords);
-	if (error)
-		return EBUSY;
-
-	if (!iwx_nic_lock(sc))
-		return EBUSY;
-
-	/* Set physical address of TX scheduler rings (1KB aligned). */
-	iwx_write_prph(sc, IWX_SCD_DRAM_BASE_ADDR, sc->sched_dma.paddr >> 10);
-
-	iwx_write_prph(sc, IWX_SCD_CHAINEXT_EN, 0);
-
-	iwx_nic_unlock(sc);
-
-	/* enable command channel */
-//	error = iwx_enable_txq(sc, 0 /* unused */, IWX_CMD_QUEUE, 7);
-	error = iwx_enable_txq(sc, IWX_AUX_STA_ID, IWX_DQA_AUX_QUEUE, IWX_MGMT_TID, IWX_TX_RING_COUNT);
-	if (error)
-		return error;
-
-	if (!iwx_nic_lock(sc))
-		return EBUSY;
-
-	iwx_write_prph(sc, IWX_SCD_TXFACT, 0xff);
-
-	/* Enable DMA channels. */
-	for (chnl = 0; chnl < IWX_FH_TCSR_CHNL_NUM; chnl++) {
-		IWX_WRITE(sc, IWX_FH_TCSR_CHNL_TX_CONFIG_REG(chnl),
-		    IWX_FH_TCSR_TX_CONFIG_REG_VAL_DMA_CHNL_ENABLE |
-		    IWX_FH_TCSR_TX_CONFIG_REG_VAL_DMA_CREDIT_ENABLE);
-	}
-
-	IWX_SETBITS(sc, IWX_FH_TX_CHICKEN_BITS_REG,
-	    IWX_FH_TX_CHICKEN_BITS_SCD_AUTO_RETRY_EN);
-
-	iwx_nic_unlock(sc);
-
-#ifdef not_in_iwx
-	/* Enable L1-Active */
-	if (sc->cfg->device_family < IWX_DEVICE_FAMILY_8000) {
-		iwx_clear_bits_prph(sc, IWX_APMG_PCIDEV_STT_REG,
-		    IWX_APMG_PCIDEV_STT_VAL_L1_ACT_DIS);
-	}
-#endif
-
-	return error;
-#endif
 	iwx_ict_reset(sc);
 	iwx_ctxt_info_free(sc);
 }
