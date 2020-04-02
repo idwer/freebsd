@@ -1753,6 +1753,8 @@ iwx_nic_init(struct iwx_softc *sc)
 
 	iwx_apm_init(sc);
 
+	iwx_set_pwr(sc);
+
 	iwx_nic_config(sc);
 
 	if ((error = iwx_nic_rx_init(sc)) != 0)
