@@ -505,6 +505,7 @@ iwx_apm_init(struct iwx_softc *sc)
 	 */
 	IWX_SETBITS(sc, IWX_CSR_GP_CNTRL, IWX_CSR_GP_CNTRL_REG_FLAG_INIT_DONE);
 
+#ifdef not_in_iwx
 	/*
 	 * Wait for clock stabilization; once stabilized, access to
 	 * device-internal resources is supported, e.g. iwm_write_prph()
@@ -522,10 +523,11 @@ iwx_apm_init(struct iwx_softc *sc)
  out:
 	if (error)
 		device_printf(sc->sc_dev, "apm init error %d\n", error);
+#endif
 	return error;
 }
 
-/* iwlwifi/pcie/trans.c */
+/* iwlwifi/pcie/trans-gen2.c */
 void
 iwx_apm_stop(struct iwx_softc *sc)
 {

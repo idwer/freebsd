@@ -109,8 +109,6 @@ const struct iwx_cfg iwx22000_cfg = {
 	.fw_name = IWXFW,
 	IWX_DEVICE_22000_COMMON,
 	.host_interrupt_operation_mode = 0,
-#ifdef not_in_iwx
-	//	.mqrx_supported = 1,
-#endif
+	.mqrx_supported = 1,
 //	.sc_tx_with_siso_diversity = 0,
 };

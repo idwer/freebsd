@@ -278,6 +278,10 @@ struct iwx_dma_info {
 	bus_size_t		size;
 };
 
+struct iwx_txq {
+	// todo
+};
+
 #define	IWX_DEFAULT_QUEUE_SIZE	IWX_TFD_QUEUE_SIZE_MAX
 
 #define IWX_TX_RING_COUNT	IWX_DEFAULT_QUEUE_SIZE
@@ -502,6 +506,11 @@ struct iwx_softc {
 	int			sc_hw_id;
 
 	struct iwx_dma_info	fw_dma;
+
+	unsigned long queue_stopped[IWX_MAX_TVQM_QUEUES];
+	unsigned long queue_used[IWX_MAX_TVQM_QUEUES];
+
+	uint8_t			cmd_queue;
 
 	struct iwx_dma_info	ctxt_info_dma;
 	struct iwx_self_init_dram init_dram;
