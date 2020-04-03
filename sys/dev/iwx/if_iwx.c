@@ -264,9 +264,7 @@ static int	iwx_allow_mcast(struct ieee80211vap *, struct iwx_softc *);
 static void	iwx_stop_device(struct iwx_softc *);
 static void	iwx_nic_config(struct iwx_softc *);
 static int	iwx_nic_rx_init(struct iwx_softc *);
-#ifdef not_in_iwx
-// static int	iwx_nic_tx_init(struct iwx_softc *);
-#endif
+static int	iwx_nic_tx_init(struct iwx_softc *, int, int);
 static int	iwx_nic_init(struct iwx_softc *);
 static void	iwx_trans_pcie_fw_alive(struct iwx_softc *, uint32_t);
 static int	iwx_nvm_read_chunk(struct iwx_softc *, uint16_t, uint16_t,
@@ -1584,7 +1582,7 @@ iwx_ict_reset(struct iwx_softc *sc)
 }
 //#endif
 
-/* iwlwifi pcie/trans.c */
+/* iwlwifi pcie/trans-gen2.c */
 
 /*
  * Since this .. hard-resets things, it's time to actually
@@ -1622,14 +1620,21 @@ iwx_stop_device(struct iwx_softc *sc)
 	sc->sc_flags &= ~IWX_FLAG_USE_ICT;
 
 	// iwx_disable_rx_dma() in OpenBSD?
-	iwx_pcie_rx_stop(sc);
+//	iwx_pcie_rx_stop(sc);
 
 	/* Stop RX ring. */
 	iwx_reset_rx_ring(sc, &sc->rxq);
 
 	/* Reset all TX rings. */
+	/* todo: sync with iwl_pcie_gen2_tx_stop()? */
 	for (qid = 0; qid < nitems(sc->txq); qid++)
 		iwx_reset_tx_ring(sc, &sc->txq[qid]);
+
+	iwx_ctxt_info_free_paging(sc);
+
+	/* todo: add support for AX210,
+	 * see _iwl_trans_pcie_gen2_stop_device() */
+	iwx_ctxt_info_free(sc);
 
 	/* Make sure (redundant) we've released our request to stay awake */
 	IWX_CLRBITS(sc, IWX_CSR_GP_CNTRL,
@@ -1655,8 +1660,6 @@ iwx_stop_device(struct iwx_softc *sc)
 	iwx_check_rfkill(sc);
 
 	iwx_prepare_card_hw(sc);
-
-	iwx_ctxt_info_free_paging(sc);
 }
 
 /* iwlwifi: mvm/ops.c */
@@ -1712,18 +1715,40 @@ iwx_nic_rx_init(struct iwx_softc *sc)
 	return 0;
 }
 
+/* pcie/tx-gen2.c */
+static int
+iwx_nic_tx_init(struct iwx_softc *sc, int txq_id, int queue_size)
+{
+//	struct iwx_txq *txq;
+//	int ret;
+
+	/* todo: this function could be lacking features */
+
+	return 0;
+}
+
 static int
 iwx_nic_init(struct iwx_softc *sc)
 {
 	int error;
 
+//	int queue_size = max_t(u32, IWX_CMD_QUEUE_SIZE,
+//			sc->cfg->min_txq_size);
+	device_printf(sc->sc_dev, "%s: min_txq_size=%d\n",
+			__func__, sc->cfg->min_txq_size);
+	int queue_size = IWX_CMD_QUEUE_SIZE;
+
 	iwx_apm_init(sc);
 
-	iwx_set_pwr(sc);
+	/* not used in pcie/trans-gen2.c */
+//	iwx_set_pwr(sc);
 
 	iwx_nic_config(sc);
 
 	if ((error = iwx_nic_rx_init(sc)) != 0)
+		return error;
+
+	if ((error = iwx_nic_tx_init(sc, sc->cmd_queue, queue_size)) != 0)
 		return error;
 
 	IWX_DPRINTF(sc, IWX_DEBUG_RESET,
@@ -1879,11 +1904,18 @@ iwx_enable_txq(struct iwx_softc *sc, int sta_id, int qid, int tid,
 	return 0;
 }
 
+/* pcie/trans-gen2.c */
 static void
 iwx_trans_pcie_fw_alive(struct iwx_softc *sc, uint32_t scd_base_addr)
 {
 	iwx_ict_reset(sc);
+
+	memset(sc->queue_stopped, 0, sizeof(sc->queue_stopped));
+	memset(sc->queue_used, 0, sizeof(sc->queue_used));
+
 	iwx_ctxt_info_free(sc);
+
+	iwx_enable_interrupts(sc);
 }
 //#endif
 

@@ -236,6 +236,8 @@ struct iwx_context_info {
 	uint32_t reserved3[16];
 } __packed;
 
+#define IWX_MAX_TVQM_QUEUES	512
+
 #define IWX_MGMT_TID		15
 
 #define IWX_MQ_RX_TABLE_SIZE	512

@@ -132,10 +132,8 @@ struct iwx_cfg {
 	uint16_t eeprom_size;
 	enum iwx_device_family device_family;
 	int host_interrupt_operation_mode;
-#ifdef not_in_iwx
-//	int mqrx_supported;
-#endif
-	int  tx_with_siso_diversity;
+	int mqrx_supported;
+	int tx_with_siso_diversity;
 	int max_tfd_queue_size;
 	int integrated;
 	uint8_t nvm_hw_section_num;
@@ -143,6 +141,7 @@ struct iwx_cfg {
 //	int apmg_wake_up_wa; /* todo if_iwx: candidate for removal, see comment */
 #endif
 	enum iwx_nvm_type nvm_type;
+	uint32_t min_txq_size; /* for AX210 */
 };
 
 /*
