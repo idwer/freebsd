@@ -299,13 +299,10 @@ static void	iwx_set_radio_cfg(const struct iwx_softc *,
 static struct iwx_nvm_data *
 	iwx_parse_nvm_sections(struct iwx_softc *, struct iwx_nvm_section *);
 static int	iwx_nvm_init(struct iwx_softc *);
-static int	iwx_start_fw(struct iwx_softc *, const struct iwx_fw_img *);
+static int	iwx_pcie_load_ucode(struct iwx_softc *);
+static int	iwx_start_fw(struct iwx_softc *);
 static int	iwx_send_tx_ant_cfg(struct iwx_softc *, uint8_t);
 static int	iwx_send_phy_cfg_cmd(struct iwx_softc *);
-#if 0
-// static int	iwx_load_ucode_wait_alive(struct iwx_softc *,
-//                                              enum iwx_ucode_type);
-#endif
 static int	iwx_load_ucode_wait_alive(struct iwx_softc *);
 static int	iwx_run_init_ucode(struct iwx_softc *, int);
 static int	iwx_config_ltr(struct iwx_softc *sc);
@@ -640,6 +637,9 @@ static int
 iwx_firmware_store_section(struct iwx_softc *sc,
     enum iwx_ucode_type type, const uint8_t *data, size_t dlen)
 {
+	device_printf(sc->sc_dev, "%s: type=%d, dlen=%zu\n",
+			__func__, type, dlen);/* todo if_iwx: remove before submitting for review */
+
 	struct iwx_fw_img *fws;
 	struct iwx_fw_desc *fwone;
 
@@ -650,8 +650,12 @@ iwx_firmware_store_section(struct iwx_softc *sc,
 
 	fws = &sc->sc_fw.img[type];
 	IWX_DPRINTF(sc, IWX_DEBUG_FW, "ucode type %d section %d\n", type, fws->fw_count);
-	if (fws->fw_count >= IWX_UCODE_SECTION_MAX)
+	if (fws->fw_count >= IWX_UCODE_SECTION_MAX) {
+		device_printf(sc->sc_dev, "%s: fw_count=%d\n",
+			__func__, fws->fw_count);/* todo if_iwx: remove before submitting for review */
+
 		return EINVAL;
+	}
 
 	fwone = &fws->fw_sect[fws->fw_count];
 
@@ -663,6 +667,9 @@ iwx_firmware_store_section(struct iwx_softc *sc,
 	fwone->len = dlen - sizeof(uint32_t);
 
 	fws->fw_count++;
+
+	device_printf(sc->sc_dev, "%s: returning\n",
+			__func__);/* todo if_iwx: remove before submitting for review */
 
 	return 0;
 }
@@ -781,7 +788,8 @@ iwx_read_firmware(struct iwx_softc *sc)
 	 * fw_fp will be set.
 	 */
 	fwp = firmware_get(sc->cfg->fw_name);
-	device_printf(sc->sc_dev, "%s: fwp=%p\n", __func__, fwp);
+	device_printf(sc->sc_dev, "%s: fwp=%p\n", __func__, fwp);/* todo if_iwx: remove before submitting for review */
+
 	if (fwp == NULL) {
 		device_printf(sc->sc_dev,
 		    "could not read firmware %s (error %d)\n",
@@ -803,7 +811,8 @@ iwx_read_firmware(struct iwx_softc *sc)
 	 */
 
 	uhdr = (const void *)fw->fw_fp->data;
-	device_printf(sc->sc_dev, "%s: uhdr=%zu\n", __func__, sizeof(uhdr));
+	device_printf(sc->sc_dev, "%s: uhdr=%zu\n", __func__, sizeof(uhdr));/* todo if_iwx: remove before submitting for review */
+
 	if (*(const uint32_t *)fw->fw_fp->data != 0
 	    || le32toh(uhdr->magic) != IWX_TLV_UCODE_MAGIC) {
 		device_printf(sc->sc_dev, "invalid firmware %s\n",
@@ -838,6 +847,7 @@ iwx_read_firmware(struct iwx_softc *sc)
 		len -= roundup2(tlv_len, 4);
 		data += sizeof(*tlv) + roundup2(tlv_len, 4);
 
+#if 0
 		device_printf(sc->sc_dev, "%s: %s %#0jx %#0jx %#0jx %#0zx %p %p %#0x %#0x %p\n",
 				__func__,
 				sc->sc_fwver,
@@ -845,12 +855,14 @@ iwx_read_firmware(struct iwx_softc *sc)
 				((uintmax_t)(const void *)fwp->data + fwp->datasize),
 				(uintmax_t)fwp->datasize,
 				len, data, tlv, tlv_len, tlv_type, tlv_data); /* todo if_iwx: remove before submitting for review */
+#endif
 		switch ((int)tlv_type) {
 		case IWX_UCODE_TLV_PROBE_MAX_LEN:
 			if (tlv_len != sizeof(uint32_t)) {
 				device_printf(sc->sc_dev,
 				    "%s: PROBE_MAX_LEN (%u) != sizeof(uint32_t)\n",
-				    __func__, tlv_len);
+				    __func__, tlv_len);/* todo if_iwx: remove before submitting for review */
+
 				error = EINVAL;
 				goto parse_out;
 			}
@@ -861,7 +873,8 @@ iwx_read_firmware(struct iwx_softc *sc)
 			    IWX_SCAN_OFFLOAD_PROBE_REQ_SIZE) {
 				IWX_DPRINTF(sc, IWX_DEBUG_FIRMWARE_TLV,
 				    "%s: IWX_UCODE_TLV_PROBE_MAX_LEN "
-				    "ridiculous\n", __func__);
+				    "ridiculous\n", __func__);/* todo if_iwx: remove before submitting for review */
+
 				error = EINVAL;
 				goto parse_out;
 			}
@@ -870,7 +883,8 @@ iwx_read_firmware(struct iwx_softc *sc)
 			if (tlv_len) {
 				device_printf(sc->sc_dev,
 				    "%s: IWX_UCODE_TLV_PAN: tlv_len (%u) > 0\n",
-				    __func__, tlv_len);
+				    __func__, tlv_len);/* todo if_iwx: remove before submitting for review */
+
 				error = EINVAL;
 				goto parse_out;
 			}
@@ -880,14 +894,16 @@ iwx_read_firmware(struct iwx_softc *sc)
 			if (tlv_len < sizeof(uint32_t)) {
 				device_printf(sc->sc_dev,
 				    "%s: IWX_UCODE_TLV_FLAGS: tlv_len (%u) < sizeof(uint32_t)\n",
-				    __func__, tlv_len);
+				    __func__, tlv_len);/* todo if_iwx: remove before submitting for review */
+
 				error = EINVAL;
 				goto parse_out;
 			}
 			if (tlv_len % sizeof(uint32_t)) {
 				device_printf(sc->sc_dev,
 				    "%s: IWX_UCODE_TLV_FLAGS: tlv_len (%u) %% sizeof(uint32_t)\n",
-				    __func__, tlv_len);
+				    __func__, tlv_len);/* todo if_iwx: remove before submitting for review */
+
 				error = EINVAL;
 				goto parse_out;
 			}
@@ -909,7 +925,8 @@ iwx_read_firmware(struct iwx_softc *sc)
 			    tlv_data, tlv_len)) != 0) {
 				device_printf(sc->sc_dev,
 				    "%s: iwx_store_cscheme(): returned %d\n",
-				    __func__, error);
+				    __func__, error);/* todo if_iwx: remove before submitting for review */
+
 				goto parse_out;
 			}
 			break;
@@ -917,7 +934,8 @@ iwx_read_firmware(struct iwx_softc *sc)
 			if (tlv_len != sizeof(uint32_t)) {
 				device_printf(sc->sc_dev,
 				    "%s: IWX_UCODE_TLV_NUM_OF_CPU: tlv_len (%u) != sizeof(uint32_t)\n",
-				    __func__, tlv_len);
+				    __func__, tlv_len);/* todo if_iwx: remove before submitting for review */
+
 				error = EINVAL;
 				goto parse_out;
 			}
@@ -942,7 +960,8 @@ iwx_read_firmware(struct iwx_softc *sc)
 			    IWX_UCODE_REGULAR, tlv_data, tlv_len)) != 0) {
 				device_printf(sc->sc_dev,
 				    "%s: IWX_UCODE_REGULAR: iwx_firmware_store_section() failed; %d\n",
-				    __func__, error);
+				    __func__, error);/* todo if_iwx: remove before submitting for review */
+
 				goto parse_out;
 			}
 			break;
@@ -951,7 +970,8 @@ iwx_read_firmware(struct iwx_softc *sc)
 			    IWX_UCODE_INIT, tlv_data, tlv_len)) != 0) {
 				device_printf(sc->sc_dev,
 				    "%s: IWX_UCODE_INIT: iwx_firmware_store_section() failed; %d\n",
-				    __func__, error);
+				    __func__, error);/* todo if_iwx: remove before submitting for review */
+
 				goto parse_out;
 			}
 			break;
@@ -960,7 +980,8 @@ iwx_read_firmware(struct iwx_softc *sc)
 			    IWX_UCODE_WOWLAN, tlv_data, tlv_len)) != 0) {
 				device_printf(sc->sc_dev,
 				    "%s: IWX_UCODE_WOWLAN: iwx_firmware_store_section() failed; %d\n",
-				    __func__, error);
+				    __func__, error);/* todo if_iwx: remove before submitting for review */
+
 				goto parse_out;
 			}
 			break;
@@ -969,14 +990,16 @@ iwx_read_firmware(struct iwx_softc *sc)
 				device_printf(sc->sc_dev,
 				    "%s: IWX_UCODE_TLV_DEV_CALIB: tlv_len (%u) < sizeof(iwm_tlv_calib_data) (%zu)\n",
 				    __func__, tlv_len,
-				    sizeof(struct iwx_tlv_calib_data));
+				    sizeof(struct iwx_tlv_calib_data));/* todo if_iwx: remove before submitting for review */
+
 				error = EINVAL;
 				goto parse_out;
 			}
 			if ((error = iwx_set_default_calib(sc, tlv_data)) != 0) {
 				device_printf(sc->sc_dev,
 				    "%s: iwx_set_default_calib() failed: %d\n",
-				    __func__, error);
+				    __func__, error);/* todo if_iwx: remove before submitting for review */
+
 				goto parse_out;
 			}
 			break;
@@ -985,7 +1008,8 @@ iwx_read_firmware(struct iwx_softc *sc)
 				error = EINVAL;
 				device_printf(sc->sc_dev,
 				    "%s: IWX_UCODE_TLV_PHY_SKU: tlv_len (%u) < sizeof(uint32_t)\n",
-				    __func__, tlv_len);
+				    __func__, tlv_len);/* todo if_iwx: remove before submitting for review */
+
 				goto parse_out;
 			}
 			sc->sc_fw.phy_config =
@@ -1144,7 +1168,8 @@ iwx_read_firmware(struct iwx_softc *sc)
 		break;
 
 		case IWX_UCODE_TLV_CMD_VERSIONS:
-			if (tlv_len % sizeof(struct iwx_fw_cmd_version)) {
+#if 0
+		if (tlv_len % sizeof(struct iwx_fw_cmd_version)) {
 				tlv_len /= sizeof(struct iwx_fw_cmd_version);
 				tlv_len *= sizeof(struct iwx_fw_cmd_version);
 			}
@@ -1158,6 +1183,7 @@ iwx_read_firmware(struct iwx_softc *sc)
 			}
 			memcpy(&sc->cmd_versions[0], tlv_data, tlv_len);
 			sc->n_cmd_versions = tlv_len / sizeof(struct iwx_fw_cmd_version);
+#endif
 			break;
 
 		case IWX_UCODE_TLV_FW_RECOVERY_INFO:
@@ -1237,7 +1263,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
 	size = IWX_RX_MQ_RING_COUNT * sizeof(uint64_t);
 	error = iwx_dma_contig_alloc(sc->sc_dmat, &ring->free_desc_dma, size,
 	    256);
-	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error); /* todo if_iwx: remove before submitting for review */
+//	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error); /* todo if_iwx: remove before submitting for review */
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "could not allocate RX ring DMA memory\n");
@@ -1248,7 +1274,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
 	/* Allocate RX status area (16-byte aligned). */
 	error = iwx_dma_contig_alloc(sc->sc_dmat, &ring->stat_dma,
 	    sizeof(*ring->stat), 16);
-	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error); /* todo if_iwx: remove before submitting for review */
+//	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error); /* todo if_iwx: remove before submitting for review */
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "could not allocate RX status DMA memory\n");
@@ -1259,7 +1285,7 @@ iwx_alloc_rx_ring(struct iwx_softc *sc, struct iwx_rx_ring *ring)
 	size = IWX_RX_MQ_RING_COUNT * sizeof(uint32_t);
 	error = iwx_dma_contig_alloc(sc->sc_dmat, &ring->used_desc_dma,
 	    size, 256);
-	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error); /* todo if_iwx: remove before submitting for review */
+//	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error); /* todo if_iwx: remove before submitting for review */
 	if (error) {
 		device_printf(sc->sc_dev, "could not allocate RX ring DMA memory\n");
 		goto fail;
@@ -1379,7 +1405,7 @@ iwx_alloc_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring, int qid)
 	/* Allocate TX descriptors (256-byte aligned). */
 	size = qlen * sizeof (struct iwx_tfh_tfd);
 	error = iwx_dma_contig_alloc(sc->sc_dmat, &ring->desc_dma, size, 256);
-	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error); /* todo if_iwx: remove before submitting for review */
+//	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error); /* todo if_iwx: remove before submitting for review */
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "could not allocate TX ring DMA memory\n");
@@ -1396,7 +1422,7 @@ iwx_alloc_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring, int qid)
 
 	error = iwx_dma_contig_alloc(sc->sc_dmat, &ring->bc_tbl,
 	    sizeof(struct iwx_agn_scd_bc_tbl), 0);
-	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error); /* todo if_iwx: remove before submitting for review */
+//	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error); /* todo if_iwx: remove before submitting for review */
 	if (error != 0) {
 		device_printf(sc->sc_dev,
 		    "could not allocate byte count table DMA memory\n");
@@ -1406,7 +1432,7 @@ iwx_alloc_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring, int qid)
 	size = qlen * sizeof(struct iwx_device_cmd);
 	error = iwx_dma_contig_alloc(sc->sc_dmat, &ring->cmd_dma, size,
 	    IWX_FIRST_TB_SIZE_ALIGN);
-	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error); /* todo if_iwx: remove before submitting for review */
+//	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error); /* todo if_iwx: remove before submitting for review */
 	if (error != 0) {
 		device_printf(sc->sc_dev, "could not allocate cmd DMA memory\n");
 		goto fail;
@@ -1735,7 +1761,8 @@ iwx_nic_init(struct iwx_softc *sc)
 //	int queue_size = max_t(u32, IWX_CMD_QUEUE_SIZE,
 //			sc->cfg->min_txq_size);
 	device_printf(sc->sc_dev, "%s: min_txq_size=%d\n",
-			__func__, sc->cfg->min_txq_size);
+			__func__, sc->cfg->min_txq_size);/* todo if_iwx: remove before submitting for review */
+
 	int queue_size = IWX_CMD_QUEUE_SIZE;
 
 	iwx_apm_init(sc);
@@ -1905,19 +1932,15 @@ iwx_enable_txq(struct iwx_softc *sc, int sta_id, int qid, int tid,
 }
 
 /* pcie/trans-gen2.c */
+/* iwx_post_alive() in openbsd */
 static void
 iwx_trans_pcie_fw_alive(struct iwx_softc *sc, uint32_t scd_base_addr)
 {
+	device_printf(sc->sc_dev, "%s: hoi\n", __func__);/* todo if_iwx: remove before submitting for review */
+
 	iwx_ict_reset(sc);
-
-	memset(sc->queue_stopped, 0, sizeof(sc->queue_stopped));
-	memset(sc->queue_used, 0, sizeof(sc->queue_used));
-
 	iwx_ctxt_info_free(sc);
-
-	iwx_enable_interrupts(sc);
 }
-//#endif
 
 /*
  * NVM read access and content parsing.  We do not support
@@ -2577,10 +2600,49 @@ iwx_nvm_init(struct iwx_softc *sc)
  * ucode
  */
 
+static int
+iwx_pcie_load_ucode(struct iwx_softc *sc)
+{
+	device_printf(sc->sc_dev, "%s: hoi\n", __func__);/* todo if_iwx: remove before submitting for review */
+
+	struct iwx_fw_img *fws;
+	int ret = 0;
+
+	fws = &sc->sc_fw.img[IWX_UCODE_REGULAR]; /* img, not fw_sects */
+
+	if ((ret = iwx_ctxt_info_init(sc, fws)) != 0) {
+			device_printf(sc->sc_dev,
+					"%s: could not init context info\n",
+					__func__);
+			return ret;
+	}
+
+	iwx_enable_interrupts(sc);
+
+	/* release CPU reset */
+	IWX_WRITE(sc, IWX_CSR_RESET, 0);
+
+	return 0;
+}
+
+/* XXX Get rid of this definition */
+static inline void
+iwx_enable_fw_load_int(struct iwx_softc *sc)
+{
+	device_printf(sc->sc_dev, "%s: hoi\n", __func__);/* todo if_iwx: remove before submitting for review */
+
+	IWX_DPRINTF(sc, IWX_DEBUG_INTR, "Enabling FW load interrupt\n");
+	sc->sc_intmask = IWX_CSR_INT_BIT_FH_TX;
+	IWX_WRITE(sc, IWX_CSR_INT_MASK, sc->sc_intmask);
+}
+
+/* pcie/trans-gen2.c */
 /* XXX Add proper rfkill support code */
 static int
-iwx_start_fw(struct iwx_softc *sc, const struct iwx_fw_img *fw)
+iwx_start_fw(struct iwx_softc *sc)
 {
+	device_printf(sc->sc_dev, "%s: hoi\n", __func__);/* todo if_iwx: remove before submitting for review */
+
 	int ret;
 
 	/* This may fail if AMT took ownership of the device */
@@ -2609,11 +2671,21 @@ iwx_start_fw(struct iwx_softc *sc, const struct iwx_fw_img *fw)
 		goto out;
 	}
 
+	/*
+	 * Now, we load the firmware and don't want to be interrupted, even
+	 * by the RF-Kill interrupt (hence mask all the interrupt besides the
+	 * FH_TX interrupt which is needed to load the firmware). If the
+	 * RF-Kill switch is toggled, we will find out after having loaded
+	 * the firmware and return the proper value to the caller.
+	 */
+	iwx_enable_fw_load_int(sc);
+
 	/* todo: add support for AX210,
 	 * see iwl_trans_pcie_gen2_start_fw() */
-	ret = iwx_ctxt_info_init(sc, fw);
 
 	/* XXX re-check RF-Kill state */
+
+	ret = iwx_pcie_load_ucode(sc);
 
 out:
 	return ret;
@@ -2744,20 +2816,19 @@ iwx_wait_phy_db_entry(struct iwx_softc *sc,
 }
 
 static int
-//iwx_load_ucode_wait_alive(struct iwx_softc *sc,
-//	enum iwx_ucode_type ucode_type)
 iwx_load_ucode_wait_alive(struct iwx_softc *sc)
 {
 	struct iwx_notification_wait alive_wait;
 	struct iwx_alive_data alive_data;
-	const struct iwx_fw_img *fw;
-//	enum iwx_ucode_type old_type = sc->cur_ucode;
 	int error;
 	static const uint16_t alive_cmd[] = { IWX_ALIVE };
 
-//	fw = &sc->sc_fw.img[ucode_type];
-	fw = &sc->sc_fw.img[IWX_UCODE_REGULAR];
-//	sc->cur_ucode = ucode_type;
+	if ((error = iwx_read_firmware(sc)) != 0) {
+		device_printf(sc->sc_dev, "%s: iwx_read_firmware failed; %d\n",
+				__func__, error);
+		return error;
+	}
+
 	sc->ucode_loaded = FALSE;
 
 	memset(&alive_data, 0, sizeof(alive_data));
@@ -2765,10 +2836,9 @@ iwx_load_ucode_wait_alive(struct iwx_softc *sc)
 				   alive_cmd, nitems(alive_cmd),
 				   iwx_alive_fn, &alive_data);
 
-	error = iwx_start_fw(sc, fw);
-	if (error) {
-		device_printf(sc->sc_dev, "iwx_start_fw: failed %d\n", error);
-//		sc->cur_ucode = old_type;
+	if ((error = iwx_start_fw(sc)) != 0) {
+		device_printf(sc->sc_dev, "%s: iwx_start_fw failed; %d\n",
+				__func__, error);
 		iwx_remove_notification(sc->sc_notif_wait, &alive_wait);
 		return error;
 	}
@@ -2782,19 +2852,19 @@ iwx_load_ucode_wait_alive(struct iwx_softc *sc)
 				      IWX_UCODE_ALIVE_TIMEOUT);
 	IWX_LOCK(sc);
 	if (error) {
-//		sc->cur_ucode = old_type;
 		device_printf(sc->sc_dev, "%s: [1] error=%d\n",
-				__func__, error);
+				__func__, error);/* todo if_iwx: remove before submitting for review */
+
 		return error;
 	}
 
 	if (!alive_data.valid) {
 		device_printf(sc->sc_dev, "%s: Loaded ucode is not valid\n",
 		    __func__);
-//		sc->cur_ucode = old_type;
 		return EIO;
 	}
 
+	/* aka iwx_post_alive() */
 	iwx_trans_pcie_fw_alive(sc, alive_data.scd_base_addr);
 
 	if (!error)
@@ -2802,9 +2872,10 @@ iwx_load_ucode_wait_alive(struct iwx_softc *sc)
 		sc->ucode_loaded = TRUE;
 
 	device_printf(sc->sc_dev, "%s: [2] error=%d\n",
-			__func__, error);
+			__func__, error);/* todo if_iwx: remove before submitting for review */
+
+
 	return error;
-//	return 0;
 }
 
 /*
@@ -2818,12 +2889,12 @@ static int
 iwx_run_init_ucode(struct iwx_softc *sc, int justnvm)
 {
 	struct iwx_notification_wait calib_wait;
-//	struct iwx_nvm_access_complete_cmd nvm_complete = {};
-	struct iwx_init_extended_cfg_cmd init_cfg = {
-		.init_flags = htole32(IWX_INIT_NVM)};
 	static const uint16_t init_complete[] = {
 		IWX_INIT_COMPLETE_NOTIF,
 	};
+	struct iwx_nvm_access_complete_cmd nvm_complete = {};
+	struct iwx_init_extended_cfg_cmd init_cfg = {
+		.init_flags = htole32(IWX_INIT_NVM)};
 	int ret;
 
 	/* do not operate with rfkill switch turned on */
@@ -2841,7 +2912,6 @@ iwx_run_init_ucode(struct iwx_softc *sc, int justnvm)
 				   sc->sc_phy_db);
 
 	/* Will also start the device */
-//	ret = iwx_load_ucode_wait_alive(sc, IWX_UCODE_INIT);
 	ret = iwx_load_ucode_wait_alive(sc);
 	if (ret) {
 		device_printf(sc->sc_dev, "Failed to start INIT ucode: %d\n",
@@ -2855,6 +2925,9 @@ iwx_run_init_ucode(struct iwx_softc *sc, int justnvm)
 	 */
 	ret = iwx_send_cmd_pdu(sc, IWX_WIDE_ID(IWX_SYSTEM_GROUP,
 	    IWX_INIT_EXTENDED_CFG_CMD), 0, sizeof(init_cfg), &init_cfg);
+	device_printf(sc->sc_dev, "%s: [1] ret=%d\n",
+			__func__, ret);/* todo if_iwx: remove before submitting for review */
+
 	if (ret)
 		return ret;
 
@@ -2869,6 +2942,9 @@ iwx_run_init_ucode(struct iwx_softc *sc, int justnvm)
 //		goto error;
 	}
 
+	ret = iwx_send_cmd_pdu(sc, IWX_WIDE_ID(IWX_REGULATORY_AND_NVM_GROUP,
+				IWX_NVM_ACCESS_COMPLETE), 0, sizeof(nvm_complete), &nvm_complete);
+
 	/* Wait for the init complete notification from the firmware. */
 	IWX_UNLOCK(sc);
 	ret = iwx_wait_notification(sc->sc_notif_wait, &calib_wait,
@@ -2881,6 +2957,9 @@ iwx_run_init_ucode(struct iwx_softc *sc, int justnvm)
 error:
 	iwx_remove_notification(sc->sc_notif_wait, &calib_wait);
 out:
+	device_printf(sc->sc_dev, "%s: [2] ret=%d\n",
+			__func__, ret);/* todo if_iwx: remove before submitting for review */
+
 	return ret;
 }
 
@@ -4674,7 +4753,8 @@ iwx_init_hw(struct iwx_softc *sc)
 
 	/* todo if_iwx: openbsd calls iwx_send_dqa_cmd(sc) at this point */
 	if ((error = iwx_send_dqa_cmd(sc)) != 0) {
-		device_printf(sc->sc_dev, "%s failed", __func__);
+		device_printf(sc->sc_dev, "%s iwx_send_dqa_cmd failed", __func__);/* todo if_iwx: remove before submitting for review */
+
 		goto error;
 	}
 
@@ -5572,7 +5652,8 @@ iwx_intr(void *arg)
 		/*
 		 * ok, there was something.  keep plowing until we have all.
 		 */
-		device_printf(sc->sc_dev, "%s: we be plowin'\n", __func__);
+		device_printf(sc->sc_dev, "%s: we be plowin'\n", __func__);/* todo if_iwx: remove before submitting for review */
+
 		r1 = r2 = 0;
 		while (tmp) {
 			r1 |= tmp;
@@ -5593,7 +5674,8 @@ iwx_intr(void *arg)
 		r1 = IWX_READ(sc, IWX_CSR_INT);
 		/* "hardware gone" (where, fishing?) */
 		if (r1 == 0xffffffff || (r1 & 0xfffffff0) == 0xa5a5a5a0) {
-			device_printf(sc->sc_dev, "%s: r1 could be 0xa5a5a5a0...: r1=0x%x\n", __func__, r1);
+			device_printf(sc->sc_dev, "%s: r1 could be 0xa5a5a5a0...: r1=0x%x\n", __func__, r1);/* todo if_iwx: remove before submitting for review */
+
 			goto out;
 		}
 		r2 = IWX_READ(sc, IWX_CSR_FH_INT_STATUS);
@@ -5891,21 +5973,22 @@ iwx_attach(device_t dev)
 
 	sc->sc_wantresp = -1;
 	
+	/* taken from the OpenBSD driver */
 	iwx_enable_interrupts(sc);
 
-	device_printf(sc->sc_dev, "%s: [1] sc_hw_rev=0x%x\n", __func__, sc->sc_hw_rev);
-	sc->sc_hw_rev = IWX_READ(sc, IWX_CSR_HW_REV);
+//	device_printf(sc->sc_dev, "%s: [1] sc_hw_rev=0x%x\n", __func__, sc->sc_hw_rev);/* todo if_iwx: remove before submitting for review */
+
+//	sc->sc_hw_rev = IWX_READ(sc, IWX_CSR_HW_REV);
 	/*
 	 * In the 8000 HW family the format of the 4 bytes of CSR_HW_REV have
 	 * changed, and now the revision step also includes bit 0-1 (no more
 	 * "dash" value). To keep hw_rev backwards compatible - we'll store it
 	 * in the old format.
 	 */
-
-	device_printf(sc->sc_dev, "%s: [2] sc_hw_rev=0x%x\n", __func__, sc->sc_hw_rev);
+	device_printf(sc->sc_dev, "%s: [2] sc_hw_rev=0x%x\n", __func__, sc->sc_hw_rev); /* to be removed before official review */
 	sc->sc_hw_rev = (sc->sc_hw_rev & 0xfff0) |
 			(IWX_CSR_HW_REV_STEP(sc->sc_hw_rev << 2) << 2);
-	device_printf(sc->sc_dev, "%s: [3] sc_hw_rev=0x%x\n", __func__, sc->sc_hw_rev);
+	device_printf(sc->sc_dev, "%s: [3] sc_hw_rev=0x%x\n", __func__, sc->sc_hw_rev); /* to be removed before official review */
 
 	if (iwx_prepare_card_hw(sc) != 0) {
 		device_printf(dev, "could not initialize hardware\n");
@@ -5937,7 +6020,8 @@ iwx_attach(device_t dev)
 		hw_step = iwx_read_prph(sc, IWX_AUX_MISC_REG);
 		hw_step = (hw_step >> IWX_HW_STEP_LOCATION_BITS) & 0xF;
 		device_printf(sc->sc_dev, "%s: [4] hw_step=0x%x\n",
-				__func__,hw_step);
+				__func__,hw_step);/* todo if_iwx: remove before submitting for review */
+
 		if (hw_step == 0x3)
 			sc->sc_hw_rev = (sc->sc_hw_rev & 0xFFFFFFF3) |
 					(IWX_SILICON_C_STEP << 2);
@@ -6031,8 +6115,14 @@ iwx_attach(device_t dev)
 		 * XXX Add a solution for properly deferring firmware load
 		 *     during bootup.
 		 */
+		device_printf(sc->sc_dev,
+				"%s: sc->sc_fw.fw_fp == NULL, goto fail \n",
+				__func__);/* todo if_iwx: remove before submitting for review */
+
 		goto fail;
 	} else {
+		device_printf(sc->sc_dev, "%s: will set up sc_preinit_hook now...\n", __func__);/* todo if_iwx: remove before submitting for review */
+
 		sc->sc_preinit_hook.ich_func = iwx_preinit;
 		sc->sc_preinit_hook.ich_arg = sc;
 		if (config_intrhook_establish(&sc->sc_preinit_hook) != 0) {
@@ -6125,18 +6215,31 @@ iwx_preinit(void *arg)
 	struct ieee80211com *ic = &sc->sc_ic;
 	int error;
 
+	device_printf(sc->sc_dev, "%s: Roodkapje,\n", __func__);/* todo if_iwx: remove before submitting for review */
+
+
 	IWX_DPRINTF(sc, IWX_DEBUG_RESET | IWX_DEBUG_TRACE,
 	    "->%s\n", __func__);
 
 	IWX_LOCK(sc);
+	device_printf(sc->sc_dev, "%s: waar ga je heen?\n", __func__);/* todo if_iwx: remove before submitting for review */
+
 	if ((error = iwx_start_hw(sc)) != 0) {
 		device_printf(dev, "could not initialize hardware\n");
 		IWX_UNLOCK(sc);
 		goto fail;
 	}
 
+	device_printf(sc->sc_dev, "%s: Naar oma!\n", __func__);/* todo if_iwx: remove before submitting for review */
+
 	error = iwx_run_init_ucode(sc, 1);
+	device_printf(sc->sc_dev, "%s: before iwx_stop_device\n",
+			__func__);/* todo if_iwx: remove before submitting for review */
+
 	iwx_stop_device(sc);
+	device_printf(sc->sc_dev, "%s: after iwx_stop_device\n",
+			__func__);/* todo if_iwx: remove before submitting for review */
+
 	if (error) {
 		IWX_UNLOCK(sc);
 		goto fail;
@@ -6182,10 +6285,19 @@ iwx_preinit(void *arg)
 	    "<-%s\n", __func__);
 	config_intrhook_disestablish(&sc->sc_preinit_hook);
 
+	device_printf(sc->sc_dev, "return from %s\n",
+			__func__);/* todo if_iwx: remove before submitting for review */
+
 	return;
 fail:
 	config_intrhook_disestablish(&sc->sc_preinit_hook);
+	device_printf(sc->sc_dev, "%s: inside fail label, before iwx_detach_local()\n",
+			__func__);/* todo if_iwx: remove before submitting for review */
+
 	iwx_detach_local(sc, 0);
+	device_printf(sc->sc_dev, "%s: inside fail label, after iwx_detach_local()\n",
+			__func__);/* todo if_iwx: remove before submitting for review */
+
 }
 
 /*
