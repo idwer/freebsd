@@ -5220,8 +5220,8 @@ iwx_nic_error(struct iwx_softc *sc)
 }
 #endif
 
+/* iwx_rx_pkt() in openbsd */
 static void
-// iwx_rx_pkt() in openbsd
 iwx_handle_rxb(struct iwx_softc *sc, struct mbuf *m)
 {
 	struct ieee80211com *ic = &sc->sc_ic;
