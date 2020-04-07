@@ -2818,12 +2818,6 @@ iwx_load_ucode_wait_alive(struct iwx_softc *sc)
 	int error;
 	static const uint16_t alive_cmd[] = { IWX_ALIVE };
 
-	if ((error = iwx_read_firmware(sc)) != 0) {
-		device_printf(sc->sc_dev, "%s: iwx_read_firmware failed; %d\n",
-				__func__, error);
-		return error;
-	}
-
 	sc->ucode_loaded = FALSE;
 
 	memset(&alive_data, 0, sizeof(alive_data));
