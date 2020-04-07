@@ -649,13 +649,8 @@ iwx_firmware_store_section(struct iwx_softc *sc,
 		return EINVAL;
 
 	fws = &sc->sc_fw.img[type];
-	IWX_DPRINTF(sc, IWX_DEBUG_FW, "ucode type %d section %d\n", type, fws->fw_count);
-	if (fws->fw_count >= IWX_UCODE_SECTION_MAX) {
-		device_printf(sc->sc_dev, "%s: fw_count=%d\n",
-			__func__, fws->fw_count);/* todo if_iwx: remove before submitting for review */
-
+	if (fws->fw_count >= IWX_UCODE_SECTION_MAX)
 		return EINVAL;
-	}
 
 	fwone = &fws->fw_sect[fws->fw_count];
 
