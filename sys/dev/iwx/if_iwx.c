@@ -2732,40 +2732,25 @@ static int
 iwx_alive_fn(struct iwx_softc *sc, struct iwx_rx_packet *pkt, void *data)
 {
 	struct iwx_alive_data *alive_data = data;
-#ifdef not_in_iwx
-	struct iwx_alive_resp_v3 *palive3;
-#endif
-//	struct iwx_alive_resp *palive;
 	struct iwx_alive_resp_v4 *palive;
 	struct iwx_umac_alive *umac;
-	struct iwx_lmac_alive *lmac1;
+	struct iwx_lmac_alive *lmac1 = NULL;
 	struct iwx_lmac_alive *lmac2 = NULL;
 	uint16_t status = 0;
-//	struct iwx_lmac_debug_addrs *lmac_dbg;
 
-//	if (iwx_rx_packet_payload_len(pkt) == sizeof(*palive)) {
+	if (iwx_rx_packet_payload_len(pkt) == sizeof(*palive)) {
 		palive = (void *)pkt->data;
 		umac = &palive->umac_data;
 		lmac1 = &palive->lmac_data[0];
 		lmac2 = &palive->lmac_data[1];
 		status = le16toh(palive->status);
-//		lmac_dbg->error_event_table_ptr = &
-#ifdef not_in_iwx
-	} else {
-		palive3 = (void *)pkt->data;
-		umac = &palive3->umac_data;
-		lmac1 = &palive3->lmac_data;
-		status = le16toh(palive3->status);
-#endif
-//	}
+	}
 
 	sc->lmac_error_event_table[0] = le32toh(lmac1->dbg_ptrs.error_event_table_ptr);
 	if (lmac2)
 		sc->lmac_error_event_table[1] =
 			le32toh(lmac2->dbg_ptrs.error_event_table_ptr);
 	sc->log_event_table = le32toh(lmac1->dbg_ptrs.log_event_table_ptr);
-// todo
-//	sc->umac_error_event_table = le32toh(umac->error_info_addr);
 	alive_data->scd_base_addr = le32toh(lmac1->dbg_ptrs.scd_base_ptr);
 	alive_data->valid = status == IWX_ALIVE_STATUS_OK;
 	if (sc->umac_error_event_table)
