@@ -1780,7 +1780,7 @@ iwx_nic_init(struct iwx_softc *sc)
 	return 0;
 }
 
-/* this is a verbatim copy/paste from openbsd */
+/* todo if_iwx: port this function, instead of copying code over from if_iwm */
 int
 iwx_enable_txq(struct iwx_softc *sc, int sta_id, int qid, int tid,
     int num_slots)
