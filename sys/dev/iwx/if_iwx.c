@@ -2625,7 +2625,7 @@ iwx_enable_fw_load_int(struct iwx_softc *sc)
 	device_printf(sc->sc_dev, "%s: hoi\n", __func__);/* todo if_iwx: remove before submitting for review */
 
 	IWX_DPRINTF(sc, IWX_DEBUG_INTR, "Enabling FW load interrupt\n");
-	sc->sc_intmask = IWX_CSR_INT_BIT_FH_TX;
+	sc->sc_intmask = IWX_CSR_INT_BIT_ALIVE | IWX_CSR_INT_BIT_FH_RX;
 	IWX_WRITE(sc, IWX_CSR_INT_MASK, sc->sc_intmask);
 }
 
