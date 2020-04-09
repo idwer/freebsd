@@ -5952,7 +5952,7 @@ iwx_attach(device_t dev)
 
 //	device_printf(sc->sc_dev, "%s: [1] sc_hw_rev=0x%x\n", __func__, sc->sc_hw_rev);/* todo if_iwx: remove before submitting for review */
 
-//	sc->sc_hw_rev = IWX_READ(sc, IWX_CSR_HW_REV);
+	sc->sc_hw_rev = IWX_READ(sc, IWX_CSR_HW_REV);
 	/*
 	 * In the 8000 HW family the format of the 4 bytes of CSR_HW_REV have
 	 * changed, and now the revision step also includes bit 0-1 (no more
