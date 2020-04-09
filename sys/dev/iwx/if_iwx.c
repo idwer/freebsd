@@ -5948,7 +5948,7 @@ iwx_attach(device_t dev)
 	sc->sc_wantresp = -1;
 	
 	/* taken from the OpenBSD driver */
-	iwx_enable_interrupts(sc);
+	iwx_disable_interrupts(sc);
 
 //	device_printf(sc->sc_dev, "%s: [1] sc_hw_rev=0x%x\n", __func__, sc->sc_hw_rev);/* todo if_iwx: remove before submitting for review */
 
