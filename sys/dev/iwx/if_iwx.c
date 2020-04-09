@@ -313,9 +313,7 @@ static int	iwx_get_noise(struct iwx_softc *,
 		    const struct iwx_statistics_rx_non_phy *);
 static void	iwx_handle_rx_statistics(struct iwx_softc *,
 		    struct iwx_rx_packet *);
-//static bool	iwx_rx_mpdu(struct iwx_softc *, struct mbuf *,
-//		    uint32_t, bool);
-static bool	iwx_rx_mpdu_mq(struct iwx_softc *, struct mbuf *,
+static bool	iwx_rx_mpdu(struct iwx_softc *, struct mbuf *,
 		    uint32_t, bool);
 static int	iwx_rx_tx_cmd_single(struct iwx_softc *,
                                          struct iwx_rx_packet *,
@@ -3082,7 +3080,6 @@ iwx_rxmq_get_signal_strength(struct iwx_softc *sc,
  *
  * Handles the actual data of the Rx packet from the fw
  */
-#ifdef tbd
 static bool
 iwx_rx_rx_mpdu(struct iwx_softc *sc, struct mbuf *m, uint32_t offset,
     bool stolen)
@@ -3199,7 +3196,6 @@ iwx_rx_rx_mpdu(struct iwx_softc *sc, struct mbuf *m, uint32_t offset,
 
 	return true;
 }
-#endif
 
 static bool
 iwx_rx_mpdu_mq(struct iwx_softc *sc, struct mbuf *m, uint32_t offset,
@@ -3309,7 +3305,6 @@ iwx_rx_mpdu_mq(struct iwx_softc *sc, struct mbuf *m, uint32_t offset,
 	return true;
 }
 
-//#ifdef not_in_iwx
 static bool
 iwx_rx_mpdu(struct iwx_softc *sc, struct mbuf *m, uint32_t offset,
     bool stolen)
@@ -3324,10 +3319,9 @@ iwx_rx_mpdu(struct iwx_softc *sc, struct mbuf *m, uint32_t offset,
 
 	ic = &sc->sc_ic;
 
-//	ret = sc->cfg->mqrx_supported ?
-//	    iwx_rx_mpdu_mq(sc, m, offset, stolen) :
-//	    iwx_rx_rx_mpdu(sc, m, offset, stolen);
-	ret = iwx_rx_mpdu_mq(sc, m, offset, stolen);
+	ret = sc->cfg->mqrx_supported ?
+	    iwx_rx_mpdu_mq(sc, m, offset, stolen) :
+	    iwx_rx_rx_mpdu(sc, m, offset, stolen);
 	if (!ret) {
 		counter_u64_add(ic->ic_ierrors, 1);
 		return (ret);
@@ -3357,7 +3351,6 @@ iwx_rx_mpdu(struct iwx_softc *sc, struct mbuf *m, uint32_t offset,
 
 	return true;
 }
-//#endif
 
 static int
 iwx_rx_tx_cmd_single(struct iwx_softc *sc, struct iwx_rx_packet *pkt,
