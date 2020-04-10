@@ -5665,8 +5665,8 @@ iwx_intr(void *arg)
 		IWX_WRITE(sc, IWX_RFH_Q0_FRBDCB_WIDX_TRG, 8);
 	}
 
-	/* Safely ignore these bits for debug checks below */
-	r1 &= ~(IWX_CSR_INT_BIT_ALIVE | IWX_CSR_INT_BIT_SCD);
+	/* from OpenBSD */
+	handled |= (r1 & (IWX_CSR_INT_BIT_ALIVE /* | IWX_CSR_INT_BIT_SCD */));
 
 	if (r1 & IWX_CSR_INT_BIT_SW_ERR) {
 		int i;
