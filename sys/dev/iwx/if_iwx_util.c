@@ -512,6 +512,7 @@ iwx_send_lq_cmd(struct iwx_softc *sc, struct iwx_lq_cmd *lq, boolean_t init)
 	return iwx_send_cmd(sc, &cmd);
 }
 
+/* source: OpenBSD */
 int
 iwx_clear_statistics(struct iwx_softc *sc)
 {

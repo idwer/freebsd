@@ -75,6 +75,7 @@
 #define IWX_MAX_DRAM_ENTRY	64
 #define IWX_CSR_CTXT_INFO_BA	0x40
 
+/* source: OpenBSD */
 /**
  * enum iwx_context_info_flags - Context information control flags
  * @IWX_CTXT_INFO_AUTO_FUNC_INIT: If set, FW will not wait before interrupting
@@ -118,6 +119,7 @@ enum iwx_context_info_flags {
 	IWX_CTXT_INFO_RB_SIZE_32K	= 0xe,
 };
 
+/* source: OpenBSD */
 /*
  * struct iwx_context_info_version - version structure
  * @mac_id: SKU and revision id
@@ -131,6 +133,7 @@ struct iwx_context_info_version {
 	uint16_t reserved;
 } __packed;
 
+/* source: OpenBSD */
 /*
  * struct iwx_context_info_control - version structure
  * @control_flags: context information flags see &enum iwx_context_info_flags
@@ -140,6 +143,7 @@ struct iwx_context_info_control {
 	uint32_t reserved;
 } __packed;
 
+/* source: OpenBSD */
 /*
  * struct iwx_context_info_dram - images DRAM map
  * each entry in the map represents a DRAM chunk of up to 32 KB
@@ -153,6 +157,7 @@ struct iwx_context_info_dram {
 	uint64_t virtual_img[IWX_MAX_DRAM_ENTRY];
 } __packed;
 
+/* source: OpenBSD */
 /*
  * struct iwx_context_info_rbd_cfg - RBDs configuration
  * @free_rbd_addr: default queue free RB CB base address
@@ -165,6 +170,7 @@ struct iwx_context_info_rbd_cfg {
 	uint64_t status_wr_ptr;
 } __packed;
 
+/* source: OpenBSD */
 /*
  * struct iwx_context_info_hcmd_cfg  - command queue configuration
  * @cmd_queue_addr: address of command queue
@@ -176,6 +182,7 @@ struct iwx_context_info_hcmd_cfg {
 	uint8_t reserved[7];
 } __packed;
 
+/* source: OpenBSD */
 /*
  * struct iwx_context_info_dump_cfg - Core Dump configuration
  * @core_dump_addr: core dump (debug DRAM address) start address
@@ -187,6 +194,7 @@ struct iwx_context_info_dump_cfg {
 	uint32_t reserved;
 } __packed;
 
+/* source: OpenBSD */
 /*
  * struct iwx_context_info_pnvm_cfg - platform NVM data configuration
  * @platform_nvm_addr: Platform NVM data start address
@@ -198,6 +206,7 @@ struct iwx_context_info_pnvm_cfg {
 	uint32_t reserved;
 } __packed;
 
+/* source: OpenBSD */
 /*
  * struct iwx_context_info_early_dbg_cfg - early debug configuration for
  *	dumping DRAM addresses
@@ -210,6 +219,7 @@ struct iwx_context_info_early_dbg_cfg {
 	uint32_t reserved;
 } __packed;
 
+/* source: OpenBSD */
 /*
  * struct iwx_context_info - device INIT configuration
  * @version: version information of context info and HW
@@ -1559,6 +1569,7 @@ struct iwx_tfh_tb {
  * A maximum of 255 (not 256!) TFDs may be on a queue waiting for Tx.
  */
 
+/* source: OpenBSD */
 /**
  * struct iwx_tfh_tfd - Transmit Frame Descriptor (TFD)
  * @ num_tbs 0-4 number of active tbs
@@ -1584,6 +1595,7 @@ struct iwx_agn_scd_bc_tbl {
 	uint16_t tfd_offset[IWX_TFD_QUEUE_BC_SIZE];
 } __packed;
 
+/* source: OpenBSD */
 /**
  * struct iwx_gen3_bc_tbl scheduler byte count table gen3
  * For 22560 and on:
@@ -1659,6 +1671,7 @@ enum iwm_tx_fifo {
 #define IWX_DQA_MIN_DATA_QUEUE		10
 #define IWX_DQA_MAX_DATA_QUEUE		31
 
+/* source: OpenBSD */
 enum iwx_gen2_tx_fifo {
 	IWX_GEN2_TX_FIFO_CMD = 0,
 	IWX_GEN2_EDCA_TX_FIFO_BK,
@@ -1682,6 +1695,7 @@ enum iwx_gen2_tx_fifo {
 #define IWX_DEFAULT_QUEUE_SIZE IWX_TFD_QUEUE_SIZE_MAX
 #define IWX_CMD_QUEUE_SIZE 32
 
+/* source: OpenBSD */
 /**
  * struct iwx_tx_queue_cfg_cmd - txq hw scheduler config command
  * @sta_id: station id
@@ -1701,6 +1715,7 @@ struct iwx_tx_queue_cfg_cmd {
 	uint64_t tfdq_addr;
 } __packed; /* TX_QUEUE_CFG_CMD_API_S_VER_2 */
 
+/* source: OpenBSD */
 /**
  * struct iwx_tx_queue_cfg_rsp - response to txq hw scheduler config
  * @queue_number: queue number assigned to this RA -TID
@@ -2122,6 +2137,7 @@ struct iwx_umac_debug_addrs {
 	uint32_t dbg_print_buff_addr;
 } __packed; /* UMAC_DEBUG_ADDRS_API_S_VER_1 */
 
+/* source: OpenBSD */
 struct iwx_umac_alive {
 	uint32_t umac_major;		/* UMAC version: major */
 	uint32_t umac_minor;		/* UMAC version: minor */
@@ -2140,6 +2156,7 @@ struct iwx_alive_resp_v3 {
 #endif
 
 // struct iwx_alive_resp {
+/* source: OpenBSD */
 struct iwx_alive_resp_v4 {
 	uint16_t status;
 	uint16_t flags;
@@ -2155,6 +2172,7 @@ struct iwx_alive_resp_v4 {
 #define IWX_INIT_DEBUG_CFG	(1 << 0)
 #define IWX_INIT_NVM		(1 << 1)
 
+/* source: OpenBSD */
 /**
  * struct iwx_extended_cfg_cmd - mark what commands ucode should wait for
  * before finishing init flows
@@ -2198,6 +2216,7 @@ struct iwx_error_resp {
 	uint64_t timestamp;
 } __packed;
 
+/* source: OpenBSD */
 enum iwx_fw_dbg_reg_operator {
 	CSR_ASSIGN,
 	CSR_SETBIT,
@@ -2214,6 +2233,7 @@ enum iwx_fw_dbg_reg_operator {
 	PRPH_BLOCKBIT,
 };
 
+/* source: OpenBSD */
 /**
  * struct iwx_fw_dbg_reg_op - an operation on a register
  *
@@ -2228,6 +2248,7 @@ struct iwx_fw_dbg_reg_op {
 	uint32_t val;
 } __packed;
 
+/* source: OpenBSD */
 /**
  * enum iwx_fw_dbg_monitor_mode - available monitor recording modes
  *
@@ -2243,6 +2264,7 @@ enum iwx_fw_dbg_monitor_mode {
 	MIPI_MODE = 3,
 };
 
+/* source: OpenBSD */
 /**
  * struct iwx_fw_dbg_mem_seg_tlv - configures the debug data memory segments
  *
@@ -2258,6 +2280,7 @@ struct iwx_fw_dbg_mem_seg_tlv {
 	uint32_t len;
 } __packed;
 
+/* source: OpenBSD */
 /**
  * struct iwx_fw_dbg_dest_tlv_v1 - configures the destination of the debug data
  *
@@ -2295,6 +2318,7 @@ struct iwx_fw_dbg_dest_tlv_v1 {
 /* The smem buffer chunks are in units of 256 bits */
 #define IWX_M2S_UNIT_SIZE			0x100
 
+/* source: OpenBSD */
 struct iwx_fw_dbg_dest_tlv {
 	uint8_t version;
 	uint8_t monitor_mode;
@@ -2308,6 +2332,7 @@ struct iwx_fw_dbg_dest_tlv {
 	struct iwx_fw_dbg_reg_op reg_ops[0];
 } __packed;
 
+/* source: OpenBSD */
 struct iwx_fw_dbg_conf_hcmd {
 	uint8_t id;
 	uint8_t reserved;
@@ -2315,6 +2340,7 @@ struct iwx_fw_dbg_conf_hcmd {
 	uint8_t data[0];
 } __packed;
 
+/* source: OpenBSD */
 /**
  * enum iwx_fw_dbg_trigger_mode - triggers functionalities
  *
@@ -2329,6 +2355,7 @@ enum iwx_fw_dbg_trigger_mode {
 	IWX_FW_DBG_TRIGGER_MONITOR_ONLY = (1 << 2),
 };
 
+/* source: OpenBSD */
 /**
  * enum iwx_fw_dbg_trigger_flags - the flags supported by wrt triggers
  * @IWX_FW_DBG_FORCE_RESTART: force a firmware restart
@@ -2337,6 +2364,7 @@ enum iwx_fw_dbg_trigger_flags {
 	IWX_FW_DBG_FORCE_RESTART = (1 << 0),
 };
 
+/* source: OpenBSD */
 /**
  * enum iwx_fw_dbg_trigger_vif_type - define the VIF type for a trigger
  * @IWX_FW_DBG_CONF_VIF_ANY: any vif type
@@ -2361,6 +2389,7 @@ enum iwx_fw_dbg_trigger_vif_type {
 
 #define IWX_FW_DBG_CONF_MAX 32
 
+/* source: OpenBSD */
 /**
  * enum iwl_fw_dbg_trigger - triggers available
  *
@@ -2418,7 +2447,7 @@ enum iwx_fw_dbg_trigger {
 	IWX_FW_DBG_TRIGGER_MAX,
 };
 
-
+/* source: OpenBSD */
 /**
  * struct iwx_fw_dbg_trigger_tlv - a TLV that describes the trigger
  * @id: &enum iwx_fw_dbg_trigger
@@ -2456,6 +2485,7 @@ struct iwx_fw_dbg_trigger_tlv {
 #define IWX_FW_DBG_CONF_MAX		32
 #define IWX_FW_DBG_INVALID		0xff
 
+/* source: OpenBSD */
 /**
  * struct iwx_fw_dbg_trigger_missed_bcon - configures trigger for missed beacons
  * @stop_consec_missed_bcon: stop recording if threshold is crossed.
@@ -2474,6 +2504,7 @@ struct iwx_fw_dbg_trigger_missed_bcon {
 	uint32_t reserved1[2];
 } __packed;
 
+/* source: OpenBSD */
 /**
  * struct iwx_fw_dbg_trigger_cmd - configures trigger for messages from FW.
  * cmds: the list of commands to trigger the collection on
@@ -2485,6 +2516,7 @@ struct iwx_fw_dbg_trigger_cmd {
 	} __packed cmds[16];
 } __packed;
 
+/* source: OpenBSD */
 /**
  * iwx_fw_dbg_trigger_stats - configures trigger for statistics
  * @stop_offset: the offset of the value to be monitored
@@ -2499,6 +2531,7 @@ struct iwx_fw_dbg_trigger_stats {
 	uint32_t start_threshold;
 } __packed;
 
+/* source: OpenBSD */
 /**
  * struct iwx_fw_dbg_trigger_low_rssi - trigger for low beacon RSSI
  * @rssi: RSSI value to trigger at
@@ -2507,6 +2540,7 @@ struct iwx_fw_dbg_trigger_low_rssi {
 	uint32_t rssi;
 } __packed;
 
+/* source: OpenBSD */
 /**
  * struct iwx_fw_dbg_trigger_mlme - configures trigger for mlme events
  * @stop_auth_denied: number of denied authentication to collect
@@ -2546,6 +2580,7 @@ struct iwx_fw_dbg_trigger_mlme {
 	uint8_t reserved2;
 } __packed;
 
+/* source: OpenBSD */
 /**
  * struct iwx_fw_dbg_trigger_txq_timer - configures the Tx queue's timer
  * @command_queue: timeout for the command queue in ms
@@ -2569,6 +2604,7 @@ struct iwx_fw_dbg_trigger_txq_timer {
 	uint32_t reserved[4];
 } __packed;
 
+/* source: OpenBSD */
 /**
  * struct iwx_fw_dbg_trigger_time_event - configures a time event trigger
  * time_Events: a list of tuples <id, action_bitmap>. The driver will issue a
@@ -2585,6 +2621,7 @@ struct iwx_fw_dbg_trigger_time_event {
 	} __packed time_events[16];
 } __packed;
 
+/* source: OpenBSD */
 /**
  * struct iwx_fw_dbg_trigger_ba - configures BlockAck related trigger
  * rx_ba_start: tid bitmap to configure on what tid the trigger should occur
@@ -2612,6 +2649,7 @@ struct iwx_fw_dbg_trigger_ba {
 	uint16_t frame_timeout;
 } __packed;
 
+/* source: OpenBSD */
 /**
  * struct iwx_fw_dbg_trigger_tx_latency - configures tx latency related trigger
  * @thrshold: the wanted threshold.
@@ -2628,6 +2666,7 @@ struct iwx_fw_dbg_trigger_tx_latency {
 	uint32_t reserved[4];
 } __packed;
 
+/* source: OpenBSD */
 /**
  * struct iwx_fw_dbg_trigger_tdls - configures trigger for TDLS events.
  * @action_bitmap: the TDLS action to trigger the collection upon
@@ -2641,6 +2680,7 @@ struct iwx_fw_dbg_trigger_tdls {
 	uint8_t reserved[4];
 } __packed;
 
+/* source: OpenBSD */
 /**
  * struct iwx_fw_dbg_trigger_tx_status - configures trigger for tx response
  *  status.
@@ -2654,6 +2694,7 @@ struct iwx_fw_dbg_trigger_tx_status {
 	uint32_t reserved[2];
 } __packed;
 
+/* source: OpenBSD */
 /**
  * struct iwx_fw_dbg_conf_tlv - a TLV that describes a debug configuration.
  * @id: conf id
@@ -2675,6 +2716,7 @@ struct iwx_fw_dbg_conf_tlv {
 
 #define IWX_FW_CMD_VER_UNKNOWN 99
 
+/* source: OpenBSD */
 /**
  * struct iwx_fw_cmd_version - firmware command version entry
  * @cmd: command ID
@@ -2990,6 +3032,7 @@ struct iwx_fw_channel_info_v1 {
 	uint8_t ctrl_pos;
 } __packed; /* CHANNEL_CONFIG_API_S_VER_1 */
 
+/* source: OpenBSD */
 /*
  * struct iwx_fw_channel_info - channel information
  *
@@ -3599,6 +3642,7 @@ struct iwx_statistics_rx {
  * IWM_STATISTICS_CMD (0x9c), below.
  */
 
+/* source: OpenBSD */
 /**
  * struct iwx_statistics_load - RX statistics for multi-queue devices
  * @air_time: accumulated air time, per mac
@@ -3637,6 +3681,7 @@ struct iwx_notif_statistics_v13 {
 #define IWX_STATISTICS_FLG_CLEAR		0x1
 #define IWM_STATISTICS_FLG_DISABLE_NOTIF	0x2
 
+/* source: OpenBSD */
 struct iwx_statistics_cmd {
 	uint32_t flags;
 } __packed; /* IWM_STATISTICS_CMD_API_S_VER_1 */
@@ -4869,6 +4914,7 @@ enum iwx_tx_offload_assist_flags_pos {
 #define IWX_TX_CMD_OFFLD_MH_MASK	0x1f
 #define IWX_TX_CMD_OFFLD_IP_HDR_MASK	0x3f
 
+/* source: OpenBSD */
 struct iwx_dram_sec_info {
 	uint32_t pn_low;
 	uint16_t pn_high;
@@ -5148,6 +5194,7 @@ struct iwx_tx_resp_v3 {
 	struct iwx_agg_tx_status status;
 } __packed; /* IWM_TX_RSP_API_S_VER_3 */
 
+/* source: OpenBSD */
 /**
  * struct iwx_tx_resp - notifies that fw is TXing a packet
  * ( REPLY_TX = 0x1c )
@@ -5256,6 +5303,7 @@ struct iwx_tx_path_flush_cmd_v1 {
 	uint16_t reserved;
 } __packed; /* IWM_TX_PATH_FLUSH_CMD_API_S_VER_1 */
 
+/* source: OpenBSD */
 /**
  * struct iwl_tx_path_flush_cmd -- queue/FIFO flush command
  * @sta_id: station ID to flush
@@ -5720,6 +5768,7 @@ enum iwx_channel_flags {
 	IWX_CHANNEL_FLAG_PRE_SCAN_PASSIVE2ACTIVE	= (1 << 3),
 };
 
+/* source: OpenBSD */
 /**
  * struct iwx_scan_dwell
  * @active:		default dwell time for active scan
@@ -6741,7 +6790,7 @@ iwx_rx_packet_payload_len(const struct iwx_rx_packet *pkt)
 #define IWX_MIN_DBM	-100
 #define IWX_MAX_DBM	-33	/* realistic guess */
 
-/* borrowed from sys/dev/ntb/ntb_hw/ntb_hw_amd.c */
+/* copied from sys/dev/ntb/ntb_hw/ntb_hw_amd.c */
 #ifdef __i386__
 static __inline uint64_t
 bus_space_read_8(bus_space_tag_t tag, bus_space_handle_t handle,
@@ -6762,6 +6811,7 @@ bus_space_write_8(bus_space_tag_t tag, bus_space_handle_t handle,
 }
 #endif
 
+/* IWX_READ_8() and IWX_WRITE_8() were copied from OpenBSD */
 #define IWX_READ_8(sc, reg)						\
 	bus_space_read_8((sc)->sc_st, (sc)->sc_sh, (reg))
 

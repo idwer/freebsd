@@ -144,6 +144,7 @@ int	iwx_ctxt_info_init(struct iwx_softc *,
 void	iwx_ctxt_info_free_fw_img(struct iwx_softc *);
 void	iwx_ctxt_info_free(struct iwx_softc *);
 
+/* source: OpenBSD */
 int
 iwx_ctxt_info_alloc_dma(struct iwx_softc *sc,
     const struct iwx_fw_desc *fw_sect, struct iwx_dma_info *dram)
@@ -159,6 +160,7 @@ iwx_ctxt_info_alloc_dma(struct iwx_softc *sc,
 	return 0;
 }
 
+/* source: OpenBSD */
 void iwx_ctxt_info_free_paging(struct iwx_softc *sc)
 {
 	struct iwx_self_init_dram *dram = &sc->init_dram;
@@ -177,8 +179,8 @@ void iwx_ctxt_info_free_paging(struct iwx_softc *sc)
 	dram->paging = NULL;
 }
 
+/* source: OpenBSD, with the local change of iwx_fw_sects to iwx_fw_img  */
 int
-// iwx_get_num_sections(const struct iwx_fw_sects *fws, int start)
 iwx_get_num_sections(const struct iwx_fw_img *fws, int start)
 {
 	int i = 0;
@@ -193,8 +195,8 @@ iwx_get_num_sections(const struct iwx_fw_img *fws, int start)
 	return i;
 }
 
+/* source: OpenBSD, with the local change of iwx_fw_sects to iwx_fw_img  */
 int
-// iwx_init_fw_sec(struct iwx_softc *sc, const struct iwx_fw_sects *fws,
 iwx_init_fw_sec(struct iwx_softc *sc, const struct iwx_fw_img *fws,
     struct iwx_context_info_dram *ctxt_dram)
 {
@@ -276,6 +278,7 @@ iwx_init_fw_sec(struct iwx_softc *sc, const struct iwx_fw_img *fws,
 	return 0;
 }
 
+/* source: OpenBSD */
 int
 iwx_alloc_fw_monitor_block(struct iwx_softc *sc, uint8_t max_power,
     uint8_t min_power)
@@ -312,6 +315,7 @@ iwx_alloc_fw_monitor_block(struct iwx_softc *sc, uint8_t max_power,
 	return 0;
 }
 
+/* source: OpenBSD */
 int
 iwx_alloc_fw_monitor(struct iwx_softc *sc, uint8_t max_power)
 {
@@ -334,6 +338,7 @@ iwx_alloc_fw_monitor(struct iwx_softc *sc, uint8_t max_power)
 	return iwx_alloc_fw_monitor_block(sc, max_power, 11);
 }
 
+/* source: OpenBSD */
 int
 iwx_apply_debug_destination(struct iwx_softc *sc)
 {
@@ -412,8 +417,8 @@ monitor:
 	return 0;
 }
 
+/* source: OpenBSD, with the local change of iwx_fw_sects to iwx_fw_img  */
 int
-// iwx_ctxt_info_init(struct iwx_softc *sc, const struct iwx_fw_sects *fws)
 iwx_ctxt_info_init(struct iwx_softc *sc, const struct iwx_fw_img *fws)
 {
 	struct iwx_context_info *ctxt_info;
@@ -486,6 +491,7 @@ iwx_ctxt_info_init(struct iwx_softc *sc, const struct iwx_fw_img *fws)
 	return 0;
 }
 
+/* source: OpenBSD */
 void
 iwx_ctxt_info_free_fw_img(struct iwx_softc *sc)
 {
@@ -506,236 +512,10 @@ iwx_ctxt_info_free_fw_img(struct iwx_softc *sc)
 	dram->fw = NULL;
 }
 
+/* source: OpenBSD */
 void
 iwx_ctxt_info_free(struct iwx_softc *sc)
 {
 	iwx_dma_contig_free(&sc->ctxt_info_dma);
 	iwx_ctxt_info_free_fw_img(sc);
 }
-
-/* assume iwx_free_fw_paging() is identical to iwx_ctxt_info_free_paging() */
-#ifdef not_in_iwx
-void
-iwx_free_fw_paging(struct iwx_softc *sc)
-{
-	int i;
-
-	if (sc->fw_paging_db[0].fw_paging_block.vaddr == NULL)
-		return;
-
-	for (i = 0; i < IWX_NUM_OF_FW_PAGING_BLOCKS; i++) {
-		iwx_dma_contig_free(&sc->fw_paging_db[i].fw_paging_block);
-	}
-
-	memset(sc->fw_paging_db, 0, sizeof(sc->fw_paging_db));
-}
-#endif
-
-#ifdef not_in_iwx
-static int
-iwx_fill_paging_mem(struct iwx_softc *sc, const struct iwx_fw_img *image)
-{
-	int sec_idx, idx;
-	uint32_t offset = 0;
-
-	/*
-	 * find where is the paging image start point:
-	 * if CPU2 exist and it's in paging format, then the image looks like:
-	 * CPU1 sections (2 or more)
-	 * CPU1_CPU2_SEPARATOR_SECTION delimiter - separate between CPU1 to CPU2
-	 * CPU2 sections (not paged)
-	 * PAGING_SEPARATOR_SECTION delimiter - separate between CPU2
-	 * non paged to CPU2 paging sec
-	 * CPU2 paging CSS
-	 * CPU2 paging image (including instruction and data)
-	 */
-	for (sec_idx = 0; sec_idx < IWX_UCODE_SECTION_MAX; sec_idx++) {
-		if (image->sec[sec_idx].offset == IWX_PAGING_SEPARATOR_SECTION) {
-			sec_idx++;
-			break;
-		}
-	}
-
-	/*
-	 * If paging is enabled there should be at least 2 more sections left
-	 * (one for CSS and one for Paging data)
-	 */
-	if (sec_idx >= nitems(image->sec) - 1) {
-		device_printf(sc->sc_dev,
-		    "Paging: Missing CSS and/or paging sections\n");
-		iwx_free_fw_paging(sc);
-		return EINVAL;
-	}
-
-	/* copy the CSS block to the dram */
-	IWX_DPRINTF(sc, IWX_DEBUG_FW,
-		    "Paging: load paging CSS to FW, sec = %d\n",
-		    sec_idx);
-
-	memcpy(sc->fw_paging_db[0].fw_paging_block.vaddr,
-	       image->sec[sec_idx].data,
-	       sc->fw_paging_db[0].fw_paging_size);
-
-	IWX_DPRINTF(sc, IWX_DEBUG_FW,
-		    "Paging: copied %d CSS bytes to first block\n",
-		    sc->fw_paging_db[0].fw_paging_size);
-
-	sec_idx++;
-
-	/*
-	 * copy the paging blocks to the dram
-	 * loop index start from 1 since that CSS block already copied to dram
-	 * and CSS index is 0.
-	 * loop stop at num_of_paging_blk since that last block is not full.
-	 */
-	for (idx = 1; idx < sc->num_of_paging_blk; idx++) {
-		memcpy(sc->fw_paging_db[idx].fw_paging_block.vaddr,
-		       (const char *)image->sec[sec_idx].data + offset,
-		       sc->fw_paging_db[idx].fw_paging_size);
-
-		IWX_DPRINTF(sc, IWX_DEBUG_FW,
-			    "Paging: copied %d paging bytes to block %d\n",
-			    sc->fw_paging_db[idx].fw_paging_size,
-			    idx);
-
-		offset += sc->fw_paging_db[idx].fw_paging_size;
-	}
-
-	/* copy the last paging block */
-	if (sc->num_of_pages_in_last_blk > 0) {
-		memcpy(sc->fw_paging_db[idx].fw_paging_block.vaddr,
-		       (const char *)image->sec[sec_idx].data + offset,
-		       IWX_FW_PAGING_SIZE * sc->num_of_pages_in_last_blk);
-
-		IWX_DPRINTF(sc, IWX_DEBUG_FW,
-			    "Paging: copied %d pages in the last block %d\n",
-			    sc->num_of_pages_in_last_blk, idx);
-	}
-
-	return 0;
-}
-#endif
-
-#ifdef not_in_iwx
-static int
-iwx_alloc_fw_paging_mem(struct iwx_softc *sc, const struct iwx_fw_img *image)
-{
-	int blk_idx = 0;
-	int error, num_of_pages;
-
-	if (sc->fw_paging_db[0].fw_paging_block.vaddr != NULL) {
-		int i;
-		/* Device got reset, and we setup firmware paging again */
-		for (i = 0; i < sc->num_of_paging_blk + 1; i++) {
-			bus_dmamap_sync(sc->sc_dmat,
-			    sc->fw_paging_db[i].fw_paging_block.map,
-			    BUS_DMASYNC_POSTWRITE | BUS_DMASYNC_POSTREAD);
-		}
-		return 0;
-	}
-
-	/* ensure IWM_BLOCK_2_EXP_SIZE is power of 2 of IWM_PAGING_BLOCK_SIZE */
-        _Static_assert((1 << IWX_BLOCK_2_EXP_SIZE) == IWX_PAGING_BLOCK_SIZE,
-	    "IWX_BLOCK_2_EXP_SIZE must be power of 2 of IWX_PAGING_BLOCK_SIZE");
-
-	num_of_pages = image->paging_mem_size / IWX_FW_PAGING_SIZE;
-	sc->num_of_paging_blk = ((num_of_pages - 1) /
-				    IWX_NUM_OF_PAGE_PER_GROUP) + 1;
-
-	sc->num_of_pages_in_last_blk =
-		num_of_pages -
-		IWX_NUM_OF_PAGE_PER_GROUP * (sc->num_of_paging_blk - 1);
-
-	IWX_DPRINTF(sc, IWX_DEBUG_FW,
-		    "Paging: allocating mem for %d paging blocks, each block holds 8 pages, last block holds %d pages\n",
-		    sc->num_of_paging_blk,
-		    sc->num_of_pages_in_last_blk);
-
-	/* allocate block of 4Kbytes for paging CSS */
-	error = iwx_dma_contig_alloc(sc->sc_dmat,
-	    &sc->fw_paging_db[blk_idx].fw_paging_block, IWX_FW_PAGING_SIZE,
-	    4096);
-	if (error) {
-		/* free all the previous pages since we failed */
-		iwx_free_fw_paging(sc);
-		return ENOMEM;
-	}
-
-	sc->fw_paging_db[blk_idx].fw_paging_size = IWX_FW_PAGING_SIZE;
-
-	IWX_DPRINTF(sc, IWX_DEBUG_FW,
-		    "Paging: allocated 4K(CSS) bytes for firmware paging.\n");
-
-	/*
-	 * allocate blocks in dram.
-	 * since that CSS allocated in fw_paging_db[0] loop start from index 1
-	 */
-	for (blk_idx = 1; blk_idx < sc->num_of_paging_blk + 1; blk_idx++) {
-		/* allocate block of IWM_PAGING_BLOCK_SIZE (32K) */
-		/* XXX Use iwm_dma_contig_alloc for allocating */
-		error = iwx_dma_contig_alloc(sc->sc_dmat,
-		     &sc->fw_paging_db[blk_idx].fw_paging_block,
-		    IWX_PAGING_BLOCK_SIZE, 4096);
-		if (error) {
-			/* free all the previous pages since we failed */
-			iwx_free_fw_paging(sc);
-			return ENOMEM;
-		}
-
-		sc->fw_paging_db[blk_idx].fw_paging_size = IWX_PAGING_BLOCK_SIZE;
-
-		IWX_DPRINTF(sc, IWX_DEBUG_FW,
-			    "Paging: allocated 32K bytes for firmware paging.\n");
-	}
-
-	return 0;
-}
-#endif
-
-#ifdef not_in_iwx
-int
-iwx_save_fw_paging(struct iwx_softc *sc, const struct iwx_fw_img *fw)
-{
-	int ret;
-
-	ret = iwx_alloc_fw_paging_mem(sc, fw);
-	if (ret)
-		return ret;
-
-	return iwx_fill_paging_mem(sc, fw);
-}
-#endif
-
-/* send paging cmd to FW in case CPU2 has paging image */
-#ifdef not_in_iwx
-int
-iwx_send_paging_cmd(struct iwx_softc *sc, const struct iwx_fw_img *fw)
-{
-	int blk_idx;
-	uint32_t dev_phy_addr;
-	struct iwx_fw_paging_cmd fw_paging_cmd = {
-		.flags =
-			htole32(IWX_PAGING_CMD_IS_SECURED |
-				IWX_PAGING_CMD_IS_ENABLED |
-				(sc->num_of_pages_in_last_blk <<
-				IWX_PAGING_CMD_NUM_OF_PAGES_IN_LAST_GRP_POS)),
-		.block_size = htole32(IWX_BLOCK_2_EXP_SIZE),
-		.block_num = htole32(sc->num_of_paging_blk),
-	};
-
-	/* loop for for all paging blocks + CSS block */
-	for (blk_idx = 0; blk_idx < sc->num_of_paging_blk + 1; blk_idx++) {
-		dev_phy_addr = htole32(
-		    sc->fw_paging_db[blk_idx].fw_paging_block.paddr >>
-		    IWX_PAGE_2_EXP_SIZE);
-		fw_paging_cmd.device_phy_addr[blk_idx] = dev_phy_addr;
-		bus_dmamap_sync(sc->sc_dmat,
-		    sc->fw_paging_db[blk_idx].fw_paging_block.map,
-		    BUS_DMASYNC_PREWRITE | BUS_DMASYNC_PREREAD);
-	}
-
-	return iwx_send_cmd_pdu(sc, iwx_cmd_id(IWX_FW_PAGING_BLOCK_CMD,
-						   IWX_ALWAYS_LONG_GROUP, 0),
-				    0, sizeof(fw_paging_cmd), &fw_paging_cmd);
-}
-#endif
