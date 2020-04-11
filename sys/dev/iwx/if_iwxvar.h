@@ -193,6 +193,7 @@ struct iwx_fw_img { // iwx_fw_sects in openbsd
 //	IWX_FW_DBG_TRIGGER_MAX,
 //};
 
+/* source: OpenBSD */
 struct iwx_fw_dbg {
 	/* FW debug data parsed for driver usage */
 	int dbg_dest_tlv_init;
@@ -379,6 +380,7 @@ struct iwm_bf_data {
 	int last_cqm_event;
 };
 
+/* source: OpenBSD */
 /**
  * struct iwx_self_init_dram - dram data used by self init process
  * @fw: lmac and umac dram data
@@ -593,16 +595,6 @@ struct iwx_softc {
 	uint32_t		umac_error_event_table;
 	int			support_umac_log;
 	int			error_event_table_tlv_status;
-
-#ifdef not_in_iwx
-	/*
-	 * Paging parameters - All of the parameters should be set by the
-	 * opmode when paging is enabled
-	 */
-//	struct iwx_fw_paging	fw_paging_db[IWX_NUM_OF_FW_PAGING_BLOCKS];
-//	uint16_t		num_of_paging_blk;
-//	uint16_t		num_of_pages_in_last_blk;
-#endif
 
 	boolean_t		last_ebs_successful;
 

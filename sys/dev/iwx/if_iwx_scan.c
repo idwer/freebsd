@@ -699,6 +699,7 @@ iwx_umac_scan_abort(struct iwx_softc *sc)
 }
 int	iwx_scan_abort(struct iwx_softc *);
  
+/* source: OpenBSD */
 int
 iwx_scan_abort(struct iwx_softc *sc)
 {
@@ -710,6 +711,7 @@ iwx_scan_abort(struct iwx_softc *sc)
 	return err;
 }
 
+/* source: OpenBSD */
 int
 iwx_enable_data_tx_queues(struct iwx_softc *sc)
 {

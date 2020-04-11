@@ -93,27 +93,4 @@ extern	int iwx_get_num_sections(const struct iwx_fw_img *fws, int start);
 extern	void iwx_ctxt_info_free_fw_img(struct iwx_softc *sc);
 #endif
 
-#ifdef not_in_iwx
-/*
- * Image paging calculations
- */
-#define IWX_BLOCK_PER_IMAGE_2_EXP_SIZE 5
-/* 2^5 == 32 blocks per image */
-#define IWX_NUM_OF_BLOCK_PER_IMAGE (1 << IWX_BLOCK_PER_IMAGE_2_EXP_SIZE)
-/* maximum image size 1024KB */
-#define IWX_MAX_PAGING_IMAGE_SIZE (IWX_NUM_OF_BLOCK_PER_IMAGE * IWX_PAGING_BLOCK_SIZE)
-
-/* Virtual address signature */
-#define IWM_PAGING_ADDR_SIG 0xAA000000
-
-#define IWX_PAGING_CMD_IS_SECURED (1 << 9)
-#define IWX_PAGING_CMD_IS_ENABLED (1 << 8)
-#define IWX_PAGING_CMD_NUM_OF_PAGES_IN_LAST_GRP_POS 0
-#define IWM_PAGING_TLV_SECURE_MASK 1
-
-extern	void iwx_free_fw_paging(struct iwx_softc *);
-extern	int iwx_save_fw_paging(struct iwx_softc *, const struct iwx_fw_img *);
-extern	int iwx_send_paging_cmd(struct iwx_softc *, const struct iwx_fw_img *);
-#endif
-
 #endif	/* __IF_IWM_FW_H__ */
