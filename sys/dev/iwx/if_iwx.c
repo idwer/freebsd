@@ -5338,7 +5338,6 @@ iwx_handle_rxb(struct iwx_softc *sc, struct mbuf *m)
 static void
 iwx_notif_intr(struct iwx_softc *sc)
 {
-	int count = 0;
 //	uint32_t wreg;
 	uint16_t hw;
 
@@ -5371,7 +5370,7 @@ iwx_notif_intr(struct iwx_softc *sc)
 		    "%s: hw = %d cur = %d\n", __func__, hw, ring->cur);
 		iwx_handle_rxb(sc, data->m);
 
-		ring->cur = (ring->cur + 1) % count;
+		ring->cur = (ring->cur + 1) % IWX_RX_MQ_RING_COUNT;
 	}
 
 	/*
