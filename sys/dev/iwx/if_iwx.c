@@ -2615,6 +2615,7 @@ iwx_load_ucode_wait_alive(struct iwx_softc *sc)
 		uint32_t a = 0x5a5a5a5a, b = 0x5a5a5a5a;
 		uint32_t c = 0x5a5a5a5a, d = 0x5a5a5a5a;
 		uint32_t e = 0x5a5a5a5a;
+		uint32_t f = 0x5a5a5a5a, g = 0x5a5a5a5a;
 		if (iwx_nic_lock(sc)) {
 			a = iwx_read_umac_prph(sc, IWX_UMAG_SB_CPU_1_STATUS);
 			b = iwx_read_umac_prph(sc, IWX_UMAG_SB_CPU_2_STATUS);
@@ -2623,12 +2624,17 @@ iwx_load_ucode_wait_alive(struct iwx_softc *sc)
 			if (iwx_fw_has_capa(sc, IWX_UCODE_TLV_CAPA_CDB_SUPPORT)) {
 				e = iwx_read_umac_prph(sc, IWX_UREG_LMAC2_CURRENT_PC);
 			}
+			f = iwx_read_prph(sc, IWX_SB_CPU_1_STATUS);
+			g = iwx_read_prph(sc, IWX_SB_CPU_2_STATUS);
 
 			iwx_nic_unlock(sc);
 		}
 		device_printf(sc->sc_dev,
-		    "SecBoot CPU1 Status: 0x%x, CPU2 Status: 0x%x\n",
+		    "SecBoot (UMAG) CPU1 Status: 0x%x, CPU2 Status: 0x%x\n",
 		    a, b);
+		device_printf(sc->sc_dev,
+		    "SecBoot CPU1 Status: 0x%x, CPU2 Status: 0x%x\n",
+		    f, g);
 
 		return error;
 	}
