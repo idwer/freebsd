@@ -141,6 +141,7 @@ struct iwx_cfg {
 //	int apmg_wake_up_wa; /* todo if_iwx: candidate for removal, see comment */
 #endif
 	enum iwx_nvm_type nvm_type;
+	uint32_t umac_prph_offset;
 	uint32_t min_txq_size; /* for AX210 */
 };
 
