@@ -194,6 +194,19 @@ iwx_write_prph64(struct iwx_softc *sc, uint64_t addr, uint64_t val)
 	iwx_write_prph(sc, (uint32_t)addr + 4, val >> 32);
 }
 
+/* source: iwlwifi, iwl-io.h */
+uint32_t iwx_read_umac_prph(struct iwx_softc *sc, uint32_t offset)
+{
+	return iwx_read_prph(sc, offset + sc->cfg->umac_prph_offset);
+}
+
+/* source: iwlwifi, iwl-io.h */
+void iwx_write_umac_prph(struct iwx_softc *sc, uint32_t offset,
+		uint32_t val)
+{
+	iwx_write_prph(sc, offset + sc->cfg->umac_prph_offset, val);
+}
+
 #ifdef not_in_iwx
 int
 iwx_poll_prph(struct iwx_softc *sc, uint32_t addr, uint32_t bits, uint32_t mask,
