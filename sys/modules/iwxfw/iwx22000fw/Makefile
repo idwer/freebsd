@@ -1,6 +1,6 @@
 # $FreeBSD$
 
-KMOD=	iwxfw
+KMOD=	iwx22000fw
 #IMG=	iwlwifi-cc-a0-46
 #IMG=	intel_iwlwifi-cc-a0-46
 
