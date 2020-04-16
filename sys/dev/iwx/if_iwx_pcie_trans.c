@@ -518,7 +518,6 @@ iwx_apm_init(struct iwx_softc *sc)
 	 */
 	IWX_SETBITS(sc, IWX_CSR_GP_CNTRL, IWX_CSR_GP_CNTRL_REG_FLAG_INIT_DONE);
 
-#ifdef not_in_iwx
 	/*
 	 * Wait for clock stabilization; once stabilized, access to
 	 * device-internal resources is supported, e.g. iwm_write_prph()
@@ -536,7 +535,6 @@ iwx_apm_init(struct iwx_softc *sc)
  out:
 	if (error)
 		device_printf(sc->sc_dev, "apm init error %d\n", error);
-#endif
 	return error;
 }
 
@@ -690,12 +688,10 @@ iwx_start_hw(struct iwx_softc *sc)
 	if ((error = iwx_apm_init(sc)) != 0)
 		return error;
 
-#ifdef not_in_iwx
 	/* On newer chipsets MSI is disabled by default. */
 	/* todo if_iwx: replace this with iwx_init_msix_hw() - import it first */
 	if (sc->cfg->mqrx_supported)
 		iwx_write_prph(sc, IWX_UREG_CHICK, IWX_UREG_CHICK_MSI_ENABLE);
-#endif
 
 	iwx_enable_rfkill_int(sc);
 	iwx_check_rfkill(sc);
