@@ -86,11 +86,9 @@ struct iwx_nvm_access_complete_cmd {
 	uint32_t reserved;
 } __packed; /* NVM_ACCESS_COMPLETE_CMD_API_S_VER_1 */
 
-#if 0
 extern	int iwx_ctxt_info_alloc_dma(struct iwx_softc *sc,
     const struct iwx_fw_desc *fw_sect, struct iwx_dma_info *dram);
 extern	int iwx_get_num_sections(const struct iwx_fw_img *fws, int start);
 extern	void iwx_ctxt_info_free_fw_img(struct iwx_softc *sc);
-#endif
 
 #endif	/* __IF_IWM_FW_H__ */

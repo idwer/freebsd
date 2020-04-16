@@ -383,14 +383,9 @@ static int	iwx_detach(device_t);
 /* end copy/paste */
 
 /* prototypes present in openbsd's if_iwx.c */
-int	iwx_alloc_fw_monitor_block(struct iwx_softc *, uint8_t, uint8_t);
-int	iwx_alloc_fw_monitor(struct iwx_softc *, uint8_t);
-int	iwx_apply_debug_destination(struct iwx_softc *);
 int	iwx_ctxt_info_init(struct iwx_softc *, const struct iwx_fw_img *);
 void	iwx_ctxt_info_free(struct iwx_softc *);
 void	iwx_ctxt_info_free_paging(struct iwx_softc *);
-int	iwx_init_fw_sec(struct iwx_softc *, const struct iwx_fw_img *,
-	    struct iwx_context_info_dram *);
 int	iwx_enable_txq(struct iwx_softc *, int, int, int, int);
 int	iwx_send_dqa_cmd(struct iwx_softc *);
 void	iwx_update_rx_desc(struct iwx_softc *, struct iwx_rx_ring *, int);
