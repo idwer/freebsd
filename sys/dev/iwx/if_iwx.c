@@ -940,7 +940,6 @@ iwx_read_firmware(struct iwx_softc *sc)
 			break;
 
 		case IWX_UCODE_TLV_CMD_VERSIONS:
-#if 0
 		if (tlv_len % sizeof(struct iwx_fw_cmd_version)) {
 				tlv_len /= sizeof(struct iwx_fw_cmd_version);
 				tlv_len *= sizeof(struct iwx_fw_cmd_version);
@@ -955,7 +954,6 @@ iwx_read_firmware(struct iwx_softc *sc)
 			}
 			memcpy(&sc->cmd_versions[0], tlv_data, tlv_len);
 			sc->n_cmd_versions = tlv_len / sizeof(struct iwx_fw_cmd_version);
-#endif
 			break;
 
 		case IWX_UCODE_TLV_FW_RECOVERY_INFO:
