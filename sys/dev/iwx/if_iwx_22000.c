@@ -80,20 +80,7 @@ __FBSDID("$FreeBSD$");
 
 #include "if_iwx_config.h"
 
-/* todo if_iwx: rename 22500 to 22000 */
-//#define IWX22000_FW	"iwx22500fw"
-#define IWXFW "iwxfw"
-//#define IWX22000_FW	"iwx22500fw"
-//#define IWX22000_FW "iwlwifi-cc-a0-46w"
-#if 0
-#define IWX_FW_7 "iwlwifi-cc-a0-48fw"
-#define IWX_FW_1 "iwlwifi-Qu-b0-hr-b0-48fw"
-#define IWX_FW_2 "iwlwifi-Qu-b0-jf-b0-48fw"
-#define IWX_FW_3 "iwlwifi-Qu-c0-hr-b0-48fw"
-#define IWX_FW_4 "iwlwifi-Qu-c0-jf-b0-48fw"
-#define IWX_FW_5 "iwlwifi-QuZ-a0-hr-b0-48fw"
-#define IWX_FW_6 "iwlwifi-Quz-a0-hr-b0-48fw"
-#endif
+#define IWX22000_FW	"iwx22000fw"
 
 #define IWM_NVM_HW_SECTION_NUM_FAMILY_22000	10
 
@@ -105,8 +92,7 @@ __FBSDID("$FreeBSD$");
 
 const struct iwx_cfg iwx22000_cfg = {
 	.name = "iwx22000_cfg, in need of a better name /* Intel(R) Dual Band Wireless AC 9260 */",
-//	.fw_name = IWX22000_FW,
-	.fw_name = IWXFW,
+	.fw_name = IWX22000_FW,
 	IWX_DEVICE_22000_COMMON,
 	.host_interrupt_operation_mode = 0,
 	.mqrx_supported = 1,
