@@ -1976,14 +1976,7 @@ iwx_add_channel_band(struct iwx_softc *sc, struct ieee80211_channel chans[],
 
 	for (; ch_idx < ch_num; ch_idx++) {
 		ch_flags = le16_to_cpup(nvm_ch_flags + ch_idx);
-#if 0
-		if (sc->cfg->device_family == IWM_DEVICE_FAMILY_7000)
-#endif
-			ieee = iwx_nvm_channels[ch_idx];
-#if 0
-		else
-			ieee = iwm_nvm_channels_8000[ch_idx];
-#endif
+		ieee = iwx_nvm_channels[ch_idx];
 
 		if (!(ch_flags & IWX_NVM_CHANNEL_VALID)) {
 			IWX_DPRINTF(sc, IWX_DEBUG_EEPROM,
@@ -2030,14 +2023,7 @@ iwx_init_channel_map(struct ieee80211com *ic, int maxchans, int *nchans,
 	    IWX_NUM_2GHZ_CHANNELS - 1, IWX_NUM_2GHZ_CHANNELS, bands);
 
 	if (data->sku_cap_band_52GHz_enable) {
-#if 0
-		if (sc->cfg->device_family == IWM_DEVICE_FAMILY_7000)
-#endif
-			ch_num = nitems(iwx_nvm_channels);
-#if 0
-		else
-			ch_num = nitems(iwm_nvm_channels_8000);
-#endif
+		ch_num = nitems(iwx_nvm_channels);
 		memset(bands, 0, sizeof(bands));
 		setbit(bands, IEEE80211_MODE_11A);
 		iwx_add_channel_band(sc, chans, maxchans, nchans,
@@ -2108,41 +2094,23 @@ static int
 iwx_get_sku(const struct iwx_softc *sc, const uint16_t *nvm_sw,
 	    const uint16_t *phy_sku)
 {
-#if 0
-	if (sc->cfg->device_family < IWM_DEVICE_FAMILY_8000)
-		return le16_to_cpup(nvm_sw + IWM_SKU);
-#endif
 	/* todo if_iwx: tune to match/support family 22000 */
-#if 0
-	return le32_to_cpup((const uint32_t *)(phy_sku + IWM_SKU_8000));
-#endif
 	return le32_to_cpup((const uint32_t *)(phy_sku + IWX_SKU));
 }
 
 static int
 iwx_get_nvm_version(const struct iwx_softc *sc, const uint16_t *nvm_sw)
 {
-#if 0
-	if (sc->cfg->device_family < IWM_DEVICE_FAMILY_8000)
-		return le16_to_cpup(nvm_sw + IWM_NVM_VERSION);
-	else
-#endif
 	/* todo if_iwx: tune to match/support family 22000 */
-
-		return le32_to_cpup((const uint32_t *)(nvm_sw +
-						IWX_NVM_VERSION));
+	return le32_to_cpup((const uint32_t *)(nvm_sw +
+				IWX_NVM_VERSION));
 }
 
 static int
 iwx_get_radio_cfg(const struct iwx_softc *sc, const uint16_t *nvm_sw,
 		  const uint16_t *phy_sku)
 {
-#if 0
-	if (sc->cfg->device_family < IWM_DEVICE_FAMILY_8000)
-                return le16_to_cpup(nvm_sw + IWM_RADIO_CFG);
-#endif
 	/* todo if_iwx: tune to match/support family 22000 */
-
         return le32_to_cpup((const uint32_t *)(phy_sku + IWX_RADIO_CFG));
 }
 
@@ -3401,13 +3369,7 @@ iwx_tx_fill_cmd(struct iwx_softc *sc, struct iwx_node *in,
 	    !! (IWX_RIDX_IS_CCK(ridx))
 	    );
 
-#if 0
-	/* XXX TODO: hard-coded TX antenna? */
-	if (sc->cfg->device_family == IWM_DEVICE_FAMILY_9000)
-		rate_flags = IWM_RATE_MCS_ANT_B_MSK;
-	else
-#endif
-		rate_flags = IWX_RATE_MCS_ANT_A_MSK;
+	rate_flags = IWX_RATE_MCS_ANT_A_MSK;
 	if (IWX_RIDX_IS_CCK(ridx))
 		rate_flags |= IWX_RATE_MCS_CCK_MSK;
 	tx->rate_n_flags = htole32(rate_flags | rinfo->plcp);
@@ -4341,15 +4303,8 @@ iwx_is_lar_supported(struct iwx_softc *sc)
 	 * Enable LAR only if it is supported by the FW (TLV) &&
 	 * enabled in the NVM
 	 */
-#if 0
-	if (sc->cfg->device_family >= IWM_DEVICE_FAMILY_8000)
-#endif
 	/* todo if_iwx: compare against upstream whether or not this creates a bug */
-#if 0
-	return nvm_lar && tlv_lar;
-	else
-#endif
-		return tlv_lar;
+	return tlv_lar;
 }
 
 static boolean_t
