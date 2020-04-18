@@ -2610,8 +2610,7 @@ iwx_load_ucode_wait_alive(struct iwx_softc *sc)
  * follows iwlwifi/fw.c
  */
 
-/* source: iwlwifi, mvm/fw.c
- * iwl_run_unified_mvm_ucode() */
+/* source: iwlwifi, mvm/fw.c */
 static int
 iwx_wait_init_complete(struct iwx_softc *sc,
 	struct iwx_rx_packet *pkt, void *data)
@@ -2619,6 +2618,7 @@ iwx_wait_init_complete(struct iwx_softc *sc,
 	return 1;
 }
 
+/* iwl_run_unified_mvm_ucode() */
 static int
 iwx_run_init_unified_ucode(struct iwx_softc *sc, bool read_nvm)
 {
