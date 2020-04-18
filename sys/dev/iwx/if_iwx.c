@@ -300,7 +300,7 @@ static int	iwx_start_fw(struct iwx_softc *);
 static int	iwx_send_tx_ant_cfg(struct iwx_softc *, uint8_t);
 static int	iwx_send_phy_cfg_cmd(struct iwx_softc *);
 static int	iwx_load_ucode_wait_alive(struct iwx_softc *);
-static int	iwx_run_init_ucode(struct iwx_softc *, int);
+static int	iwx_run_init_unified_ucode(struct iwx_softc *, bool);
 static int	iwx_config_ltr(struct iwx_softc *sc);
 static int	iwx_rx_addbuf(struct iwx_softc *, int, int);
 static void	iwx_rx_rx_phy_cmd(struct iwx_softc *,
@@ -2609,10 +2609,20 @@ iwx_load_ucode_wait_alive(struct iwx_softc *sc)
 /*
  * follows iwlwifi/fw.c
  */
+
+/* source: iwlwifi, mvm/fw.c
+ * iwl_run_unified_mvm_ucode() */
 static int
-iwx_run_init_ucode(struct iwx_softc *sc, int justnvm)
+iwx_wait_init_complete(struct iwx_softc *sc,
+	struct iwx_rx_packet *pkt, void *data)
 {
-	struct iwx_notification_wait calib_wait;
+	return 1;
+}
+
+static int
+iwx_run_init_unified_ucode(struct iwx_softc *sc, bool read_nvm)
+{
+	struct iwx_notification_wait init_wait;
 	static const uint16_t init_complete[] = {
 		IWX_INIT_COMPLETE_NOTIF,
 	};
@@ -2622,18 +2632,18 @@ iwx_run_init_ucode(struct iwx_softc *sc, int justnvm)
 	int ret;
 
 	/* do not operate with rfkill switch turned on */
-	if ((sc->sc_flags & IWX_FLAG_RFKILL) && !justnvm) {
+	if ((sc->sc_flags & IWX_FLAG_RFKILL) && !read_nvm) {
 		device_printf(sc->sc_dev,
 		    "radio is disabled by hardware switch\n");
 		return EPERM;
 	}
 
 	iwx_init_notification_wait(sc->sc_notif_wait,
-				   &calib_wait,
+				   &init_wait,
 				   init_complete,
 				   nitems(init_complete),
-				   iwx_wait_phy_db_entry,
-				   sc->sc_phy_db);
+				   iwx_wait_init_complete,
+				   NULL);
 
 	/* Will also start the device */
 	ret = iwx_load_ucode_wait_alive(sc);
@@ -2655,7 +2665,7 @@ iwx_run_init_ucode(struct iwx_softc *sc, int justnvm)
 	if (ret)
 		return ret;
 
-	if (justnvm) {
+	if (read_nvm) {
 		/* Read nvm */
 		ret = iwx_nvm_init(sc);
 		if (ret) {
@@ -2671,7 +2681,7 @@ iwx_run_init_ucode(struct iwx_softc *sc, int justnvm)
 
 	/* Wait for the init complete notification from the firmware. */
 	IWX_UNLOCK(sc);
-	ret = iwx_wait_notification(sc->sc_notif_wait, &calib_wait,
+	ret = iwx_wait_notification(sc->sc_notif_wait, &init_wait,
 	    IWX_UCODE_CALIB_TIMEOUT);
 	IWX_LOCK(sc);
 
@@ -2679,7 +2689,7 @@ iwx_run_init_ucode(struct iwx_softc *sc, int justnvm)
 	goto out;
 
 error:
-	iwx_remove_notification(sc->sc_notif_wait, &calib_wait);
+	iwx_remove_notification(sc->sc_notif_wait, &init_wait);
 out:
 	device_printf(sc->sc_dev, "%s: [2] ret=%d\n",
 			__func__, ret);/* todo if_iwx: remove before submitting for review */
@@ -4404,8 +4414,8 @@ iwx_init_hw(struct iwx_softc *sc)
 		return error;
 	}
 
-	if ((error = iwx_run_init_ucode(sc, 0)) != 0) {
-		printf("iwx_run_init_ucode: failed %d\n", error);
+	if ((error = iwx_run_init_unified_ucode(sc, true)) != 0) {
+		printf("iwx_run_init_unified_ucode: failed %d\n", error);
 		return error;
 	}
 
@@ -5919,7 +5929,7 @@ iwx_preinit(void *arg)
 		goto fail;
 	}
 
-	error = iwx_run_init_ucode(sc, 1);
+	error = iwx_run_init_unified_ucode(sc, true);
 	device_printf(sc->sc_dev, "%s: before iwx_stop_device\n",
 			__func__);/* todo if_iwx: remove before submitting for review */
 
