@@ -2682,7 +2682,7 @@ iwx_run_init_unified_ucode(struct iwx_softc *sc, bool read_nvm)
 	/* Wait for the init complete notification from the firmware. */
 	IWX_UNLOCK(sc);
 	ret = iwx_wait_notification(sc->sc_notif_wait, &init_wait,
-	    IWX_UCODE_CALIB_TIMEOUT);
+	    IWX_UCODE_ALIVE_TIMEOUT);
 	IWX_LOCK(sc);
 
 
