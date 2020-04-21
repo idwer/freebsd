@@ -1443,8 +1443,6 @@ iwx_stop_device(struct iwx_softc *sc)
 	iwx_check_rfkill(sc);
 
 	iwx_prepare_card_hw(sc);
-
-	iwx_ctxt_info_free_paging(sc);
 }
 
 /* iwlwifi: mvm/ops.c */
