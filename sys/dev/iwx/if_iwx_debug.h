@@ -50,7 +50,7 @@ enum {
 	IWM_DEBUG_REGISTER	= 0x20000000,	/* print chipset register */
 	IWX_DEBUG_TRACE		= 0x40000000,	/* Print begin and start driver function */
 	IWM_DEBUG_FATAL		= 0x80000000,	/* fatal errors */
-	IWM_DEBUG_ANY		= 0xffffffff
+	IWX_DEBUG_ANY		= 0xffffffff
 };
 
 #define IWX_DPRINTF(sc, m, fmt, ...) do {			\

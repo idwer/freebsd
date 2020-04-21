@@ -5643,6 +5643,7 @@ iwx_attach(device_t dev)
 
 	sc->sc_dev = dev;
 	sc->sc_attached = 1;
+	sc->sc_debug = IWX_DEBUG_ANY;
 	IWX_LOCK_INIT(sc);
 	mbufq_init(&sc->sc_snd, ifqmaxlen);
 	callout_init_mtx(&sc->sc_watchdog_to, &sc->sc_mtx, 0);
@@ -5803,7 +5804,7 @@ iwx_attach(device_t dev)
 #ifdef IWX_DEBUG
 	SYSCTL_ADD_INT(device_get_sysctl_ctx(dev),
 	    SYSCTL_CHILDREN(device_get_sysctl_tree(dev)), OID_AUTO, "debug",
-	    CTLFLAG_RW, &sc->sc_debug, 0, "control debugging");
+	    CTLFLAG_RW, &sc->sc_debug, IWX_DEBUG_ANY, "control debugging");
 #endif
 
 	error = iwx_read_firmware(sc);
