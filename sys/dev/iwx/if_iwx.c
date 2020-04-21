@@ -2371,6 +2371,7 @@ iwx_start_fw(struct iwx_softc *sc)
 {
 	device_printf(sc->sc_dev, "%s: hoi\n", __func__);/* todo if_iwx: remove before submitting for review */
 
+	struct iwx_fw_img *fws = &sc->sc_fw.img[IWX_UCODE_REGULAR]; /* img, not fw_sects */
 	int ret;
 
 	/* This may fail if AMT took ownership of the device */
@@ -2399,21 +2400,12 @@ iwx_start_fw(struct iwx_softc *sc)
 		goto out;
 	}
 
-	/*
-	 * Now, we load the firmware and don't want to be interrupted, even
-	 * by the RF-Kill interrupt (hence mask all the interrupt besides the
-	 * FH_TX interrupt which is needed to load the firmware). If the
-	 * RF-Kill switch is toggled, we will find out after having loaded
-	 * the firmware and return the proper value to the caller.
-	 */
-	iwx_enable_fw_load_int(sc);
-
 	/* todo: add support for AX210,
 	 * see iwl_trans_pcie_gen2_start_fw() */
 
 	/* XXX re-check RF-Kill state */
 
-	ret = iwx_pcie_load_ucode(sc);
+	ret = iwx_ctxt_info_init(sc, fws);
 
 out:
 	return ret;
