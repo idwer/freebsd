@@ -5981,11 +5981,11 @@ iwx_preinit(void *arg)
 	return;
 fail:
 	config_intrhook_disestablish(&sc->sc_preinit_hook);
-	device_printf(sc->sc_dev, "%s: inside fail label, before iwx_detach_local()\n",
+	device_printf(sc->sc_dev, "%s: inside fail: label, before iwx_detach_local()\n",
 			__func__);/* todo if_iwx: remove before submitting for review */
 
 	iwx_detach_local(sc, 0);
-	device_printf(sc->sc_dev, "%s: inside fail label, after iwx_detach_local()\n",
+	device_printf(sc->sc_dev, "%s: inside fail: label, after iwx_detach_local()\n",
 			__func__);/* todo if_iwx: remove before submitting for review */
 
 }
