@@ -1694,6 +1694,9 @@ iwx_trans_pcie_fw_alive(struct iwx_softc *sc, uint32_t scd_base_addr)
 {
 	device_printf(sc->sc_dev, "%s: hoi\n", __func__);/* todo if_iwx: remove before submitting for review */
 
+	memset(sc->queue_stopped, 0, sizeof(sc->queue_stopped));
+	memset(sc->queue_used, 0, sizeof(sc->queue_used));
+
 	iwx_ict_reset(sc);
 	iwx_ctxt_info_free(sc);
 }
