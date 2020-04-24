@@ -295,8 +295,9 @@ static void	iwx_set_radio_cfg(const struct iwx_softc *,
 static struct iwx_nvm_data *
 	iwx_parse_nvm_sections(struct iwx_softc *, struct iwx_nvm_section *);
 static int	iwx_nvm_init(struct iwx_softc *);
-static int	iwx_pcie_load_ucode(struct iwx_softc *);
-static int	iwx_start_fw(struct iwx_softc *);
+static int	iwx_pcie_load_given_ucode(struct iwx_softc *,
+					  const struct iwx_fw_img *);
+static int	iwx_start_fw(struct iwx_softc *, const struct iwx_fw_img *);
 static int	iwx_send_tx_ant_cfg(struct iwx_softc *, uint8_t);
 static int	iwx_send_phy_cfg_cmd(struct iwx_softc *);
 static int	iwx_load_ucode_wait_alive(struct iwx_softc *);
@@ -2327,18 +2328,16 @@ iwx_nvm_init(struct iwx_softc *sc)
  * ucode
  */
 
-/* iwx_pcie_load_ucode() is adapted to look like OpenBSD's implementation */
+/* iwx_pcie_load_given_ucode() follows FreeBSD's parameters (like if_iwm),
+ * the implementation comes from OpenBSD */
 static int
-iwx_pcie_load_ucode(struct iwx_softc *sc)
+iwx_pcie_load_given_ucode(struct iwx_softc *sc, const struct iwx_fw_img *fw)
 {
 	device_printf(sc->sc_dev, "%s: hoi\n", __func__);/* todo if_iwx: remove before submitting for review */
 
-	struct iwx_fw_img *fws;
 	int ret = 0;
 
-	fws = &sc->sc_fw.img[IWX_UCODE_REGULAR]; /* img, not fw_sects */
-
-	if ((ret = iwx_ctxt_info_init(sc, fws)) != 0) {
+	if ((ret = iwx_ctxt_info_init(sc, fw)) != 0) {
 			device_printf(sc->sc_dev,
 					"%s: could not init context info\n",
 					__func__);
@@ -2367,11 +2366,10 @@ iwx_enable_fw_load_int(struct iwx_softc *sc)
 /* pcie/trans-gen2.c */
 /* XXX Add proper rfkill support code */
 static int
-iwx_start_fw(struct iwx_softc *sc)
+iwx_start_fw(struct iwx_softc *sc, const struct iwx_fw_img *fw)
 {
 	device_printf(sc->sc_dev, "%s: hoi\n", __func__);/* todo if_iwx: remove before submitting for review */
 
-	struct iwx_fw_img *fws = &sc->sc_fw.img[IWX_UCODE_REGULAR]; /* img, not fw_sects */
 	int ret;
 
 	/* This may fail if AMT took ownership of the device */
@@ -2405,7 +2403,7 @@ iwx_start_fw(struct iwx_softc *sc)
 
 	/* XXX re-check RF-Kill state */
 
-	ret = iwx_ctxt_info_init(sc, fws);
+	ret = iwx_pcie_load_given_ucode(sc, fw);
 
 out:
 	return ret;
@@ -2526,6 +2524,7 @@ iwx_load_ucode_wait_alive(struct iwx_softc *sc)
 {
 	struct iwx_notification_wait alive_wait;
 	struct iwx_alive_data alive_data;
+	struct iwx_fw_img *fw = &sc->sc_fw.img[IWX_UCODE_REGULAR]; /* img, not fw_sects */
 	int error;
 	static const uint16_t alive_cmd[] = { IWX_ALIVE };
 
@@ -2536,7 +2535,7 @@ iwx_load_ucode_wait_alive(struct iwx_softc *sc)
 				   alive_cmd, nitems(alive_cmd),
 				   iwx_alive_fn, &alive_data);
 
-	if ((error = iwx_start_fw(sc)) != 0) {
+	if ((error = iwx_start_fw(sc, fw)) != 0) {
 		device_printf(sc->sc_dev, "%s: iwx_start_fw failed; %d\n",
 				__func__, error);
 		iwx_remove_notification(sc->sc_notif_wait, &alive_wait);
