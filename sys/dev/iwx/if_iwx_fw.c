@@ -149,7 +149,7 @@ int
 iwx_ctxt_info_alloc_dma(struct iwx_softc *sc,
     const struct iwx_fw_desc *fw_sect, struct iwx_dma_info *dram)
 {
-	int err = iwx_dma_contig_alloc(sc->sc_dmat, dram, fw_sect->len, 0);
+	int err = iwx_dma_contig_alloc(sc->sc_dmat, dram, fw_sect->len, 1);
 	if (err) {
 		IWX_DPRINTF(sc, IWX_DEBUG_FW, "could not allocate context info DMA memory\n");
 		return err;
@@ -294,7 +294,7 @@ iwx_alloc_fw_monitor_block(struct iwx_softc *sc, uint8_t max_power,
 	for (power = max_power; power >= min_power; power--) {
 		size = (1 << power);
 
-		err = iwx_dma_contig_alloc(sc->sc_dmat, fw_mon, size, 0);
+		err = iwx_dma_contig_alloc(sc->sc_dmat, fw_mon, size, 1);
 		if (err)
 			continue;
 
@@ -427,7 +427,7 @@ iwx_ctxt_info_init(struct iwx_softc *sc, const struct iwx_fw_img *fws)
 	int err;
 
 	err = iwx_dma_contig_alloc(sc->sc_dmat, &sc->ctxt_info_dma,
-	    sizeof(*ctxt_info), 0);
+	    sizeof(*ctxt_info), 1);
 	if (err) {
 		device_printf(sc->sc_dev, "could not allocate context info DMA memory\n");
 		return err;

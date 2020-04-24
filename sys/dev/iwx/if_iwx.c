@@ -1186,7 +1186,7 @@ iwx_alloc_tx_ring(struct iwx_softc *sc, struct iwx_tx_ring *ring, int qid)
 		return 0;
 
 	error = iwx_dma_contig_alloc(sc->sc_dmat, &ring->bc_tbl,
-	    sizeof(struct iwx_agn_scd_bc_tbl), 0);
+	    sizeof(struct iwx_agn_scd_bc_tbl), 1);
 //	device_printf(sc->sc_dev, "%s: AYBABTU size=%zu error=%d\n", __func__, size, error); /* todo if_iwx: remove before submitting for review */
 	if (error != 0) {
 		device_printf(sc->sc_dev,
