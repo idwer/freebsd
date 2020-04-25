@@ -2344,11 +2344,6 @@ iwx_pcie_load_given_ucode(struct iwx_softc *sc, const struct iwx_fw_img *fw)
 			return ret;
 	}
 
-	iwx_enable_interrupts(sc);
-
-	/* release CPU reset */
-	IWX_WRITE(sc, IWX_CSR_RESET, 0);
-
 	return 0;
 }
 
